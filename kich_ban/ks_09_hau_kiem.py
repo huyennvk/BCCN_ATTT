@@ -1,0 +1,15 @@
+from kich_ban.common import report_result
+
+SO = 9
+TEN = "Hậu kiểm độc lập bản tin KS-01 đã lưu"
+NHOM = "Bình thường"
+KY_VONG = "SIGNATURE_VALID"
+TANG = "T0/T1/T1b/T4/T5"
+
+
+def chay(env):
+    packet = env.data.get("ks01_packet")
+    if packet is None:
+        packet = env.merchant.create_packet(message_id="TX-2026-0009")
+        env.data["ks01_packet"] = packet
+    return report_result(env, SO, TEN, packet, KY_VONG, mode="postcheck")
