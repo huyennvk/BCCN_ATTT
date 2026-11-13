@@ -20,4 +20,12 @@ def chay(env):
         timestamp=env.clock.now() - timedelta(seconds=10),
         nonce=base["payload"]["Nonce"],
     )
-    return report_result(env, SO, TEN, packet, KY_VONG)
+    return report_result(
+        env,
+        SO,
+        TEN,
+        packet,
+        KY_VONG,
+        original_packet=packet,
+        scenario_note="MessageID mới nhưng Nonce được lấy lại từ KS-01; Timestamp vẫn nằm trong cửa sổ cho phép.",
+    )

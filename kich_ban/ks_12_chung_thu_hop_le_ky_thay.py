@@ -14,4 +14,11 @@ def chay(env):
         merchant_id="MERCH-01",
     )
     packet = env.attacker.sign_payload(payload)
-    return report_result(env, SO, TEN, packet, KY_VONG)
+    return report_result(
+        env,
+        SO,
+        TEN,
+        packet,
+        KY_VONG,
+        scenario_note="ATTACK-01 ký payload tự khai MerchantID=MERCH-01; CertificateID thuộc chứng thư của ATTACK-01.",
+    )

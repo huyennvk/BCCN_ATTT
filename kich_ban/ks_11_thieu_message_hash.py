@@ -8,6 +8,15 @@ TANG = "T0"
 
 
 def chay(env):
-    packet = env.merchant.create_packet(message_id="TX-2026-0011")
+    original = env.merchant.create_packet(message_id="TX-2026-0011")
+    packet = dict(original)
     del packet["MessageHash"]
-    return report_result(env, SO, TEN, packet, KY_VONG)
+    return report_result(
+        env,
+        SO,
+        TEN,
+        packet,
+        KY_VONG,
+        original_packet=original,
+        scenario_note="Proxy xóa trường MessageHash khỏi envelope; các trường khác được giữ nguyên.",
+    )
