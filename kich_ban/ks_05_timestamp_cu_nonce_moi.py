@@ -9,7 +9,7 @@ KY_VONG = "TIMESTAMP_TOO_OLD"
 TANG = "T2"
 
 
-def chay(env):
+def chay(env, *, verbose: bool = False):
     packet = env.merchant.create_packet(
         message_id="TX-2026-0005",
         timestamp=env.clock.now() - timedelta(hours=1),
@@ -20,6 +20,7 @@ def chay(env):
         TEN,
         packet,
         KY_VONG,
+        verbose=verbose,
         original_packet=packet,
         scenario_note="Timestamp cũ hơn đồng hồ Issuer một giờ; Nonce mới, payload và chữ ký được tạo cùng nhau.",
     )

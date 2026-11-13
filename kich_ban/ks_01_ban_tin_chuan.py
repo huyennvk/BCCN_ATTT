@@ -10,7 +10,7 @@ KY_VONG = "SIGNATURE_VALID"
 TANG = "T0-T5"
 
 
-def chay(env):
+def chay(env, *, verbose: bool = False):
     now = env.clock.now()
     packet = env.merchant.create_packet(
         message_id="TX-2026-0001",
@@ -24,6 +24,7 @@ def chay(env):
         TEN,
         forwarded,
         KY_VONG,
+        verbose=verbose,
         original_packet=packet,
         scenario_note="Merchant tạo payload 7 trường, ký RSA-PSS; Proxy chuyển tiếp nguyên vẹn gói đến Issuer.",
     )

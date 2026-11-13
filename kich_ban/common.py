@@ -47,7 +47,7 @@ def _display_value(field: str, value: Any) -> str:
     return text
 
 
-def _print_packet_material(label: str, packet: Any) -> None:
+def print_packet_material(label: str, packet: Any) -> None:
     print("  %s" % label)
     if not isinstance(packet, dict):
         print("    Envelope nhận được: %s" % _display_value("packet", packet))
@@ -125,6 +125,11 @@ def _print_packet_diff(before: Any, after: Any) -> None:
         print("    Không có trường dữ liệu nào bị thay đổi.")
 
 
+def _print_compact_report(number: int, title: str, actual: str, expected: str, ok: bool) -> None:
+    status = "ĐẠT" if ok else "KHÔNG ĐẠT (kỳ vọng: %s)" % expected
+    print("KS-%02d · %s | %s | %s" % (number, title, actual, status))
+
+
 def report_result(
     env: Environment,
     number: int,
@@ -135,24 +140,28 @@ def report_result(
     mode: str = "live",
     original_packet: Any | None = None,
     scenario_note: str | None = None,
+    verbose: bool = False,
 ) -> bool:
     trace: list[str] = []
     actual = env.issuer.verify_packet(packet, mode=mode, trace=trace)
     ok = actual == expected
+    if not verbose:
+        _print_compact_report(number, title, actual, expected, ok)
+        return ok
 
     print("\nKS-%02d · %s" % (number, title))
     if scenario_note:
         print("  Bối cảnh: %s" % scenario_note)
 
     if original_packet is not None:
-        _print_packet_material("Gói Merchant/Signer tạo và ký ban đầu:", original_packet)
+        print_packet_material("Gói Merchant/Signer tạo và ký ban đầu:", original_packet)
         if original_packet == packet:
             print("  Gói đưa vào Issuer: giữ nguyên như gói đã ký.")
         else:
-            _print_packet_material("Gói sau tác động, Issuer nhận:", packet)
+            print_packet_material("Gói sau tác động, Issuer nhận:", packet)
             _print_packet_diff(original_packet, packet)
     else:
-        _print_packet_material("Gói đưa vào Issuer:", packet)
+        print_packet_material("Gói đưa vào Issuer:", packet)
 
     print("  Các bước Issuer xử lý:")
     for step in trace:

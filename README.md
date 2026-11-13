@@ -26,21 +26,17 @@ python -m pip install -r requirements.txt
 python -m pip install -r requirements-dev.txt
 ```
 
-Chạy toàn bộ 12 kịch bản và sáu kiểm tra đơn vị bổ sung:
+Chạy toàn bộ 12 kịch bản và sáu kiểm tra đơn vị bổ sung, chạy riêng một kịch bản, xem mẫu luồng G1–G8 hoặc benchmark RSA:
 
 ```bash
 python run_scenarios.py
-```
-
-Chạy một kịch bản, demo luồng G1–G8 hoặc benchmark RSA:
-
-```bash
 python run_scenarios.py --ks 3
+python run_scenarios.py --ks 3 --verbose
 python run_scenarios.py --flow
 python run_scenarios.py --bench
 ```
 
-Mỗi kịch bản in payload, chuỗi JSON chuẩn hóa dạng UTF-8, `MessageHash` SHA-256, độ dài/đoạn xem trước của chữ ký hex, các trường thay đổi (nếu có) và giá trị cụ thể được kiểm tra tại từng tầng. Chữ ký không mã hóa payload; ví dụ chỉ dùng dữ liệu giả lập. `--ks 3` hữu ích nếu muốn đọc chi tiết một kịch bản thay vì toàn bộ 12 kịch bản.
+Chạy mặc định sẽ in một mẫu luồng G1–G8 đầy đủ (payload, JSON chuẩn hóa UTF-8, SHA-256, chữ ký và trace T0–T5), sau đó mỗi kịch bản KS chỉ in mã quyết định cùng trạng thái đạt/không đạt. `--ks 3` chỉ in kết quả của KS-03; thêm `--verbose` để xem trace chi tiết riêng cho kịch bản đó. `--flow` chỉ chạy mẫu luồng đầy đủ. Payload không được mã hóa; chữ ký không che nội dung.
 
 Chạy kiểm thử tự động:
 

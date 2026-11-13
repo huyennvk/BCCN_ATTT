@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import argparse
+import contextlib
 import datetime as dt
 import importlib
+import io
 import pkgutil
 import platform
 import statistics
@@ -18,6 +20,7 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 import kich_ban
 from ca_service import DemoCA
 from he_thong import FrozenClock, Proxy, create_environment
+from kich_ban.common import print_packet_material
 from rsa_crypto import canonical_json_bytes, generate_private_key, sign, verify
 
 BASE_TIME = dt.datetime(2026, 9, 24, 8, 0, 0, tzinfo=dt.timezone.utc)
@@ -92,20 +95,28 @@ def run_unit_checks() -> bool:
 
 
 def run_flow() -> bool:
+    """Print one full, successful sample from payload creation through verification."""
     env = create_environment(clock=FrozenClock(BASE_TIME))
-    packet = env.merchant.create_packet(message_id="FLOW-2026-0001")
-    packet = Proxy.forward(packet)
+    signed_packet = env.merchant.create_packet(message_id="FLOW-2026-0001")
+    received_packet = Proxy.forward(signed_packet)
     trace: list[str] = []
-    code = env.issuer.verify_packet(packet, trace=trace)
-    print("[G1] Demo CA root, Merchant and Issuer initialized")
-    print("[G2-G3] Merchant creates a seven-field payload and signs it with RSA-PSS")
-    print("[G4] Proxy forwards the envelope unchanged")
+    code = env.issuer.verify_packet(received_packet, trace=trace)
+
+    print("\nMẪU CHI TIẾT LUỒNG GIAO DỊCH G1–G8")
+    print("[G1] Khởi tạo Demo CA, Merchant và Issuer.")
+    print("[G2–G3] Merchant tạo payload rồi chuẩn hóa, băm và ký:")
+    print_packet_material("Gói Merchant/Signer tạo:", signed_packet)
+    print(
+        "[G4] Proxy chuyển tiếp nguyên gói: %s"
+        % ("không thay đổi payload/hash/chữ ký" if received_packet == signed_packet else "gói đã thay đổi")
+    )
+    print("[G5] Issuer nhận gói và kiểm tra T0–T5:")
     for line in trace:
-        print("[G5] %s" % line)
-    print("[G6] decision=%s" % code)
-    print("[G7] audit head=%s" % env.issuer.audit_log.head)
-    print("[G8] expected SIGNATURE_VALID -> %s" % ("PASS" if code == "SIGNATURE_VALID" else "FAIL"))
-    return code == "SIGNATURE_VALID"
+        print("  %s" % line)
+    print("[G6] Quyết định Issuer: %s" % code)
+    print("[G7] Audit head: %s" % env.issuer.audit_log.head)
+    print("[G8] Kỳ vọng SIGNATURE_VALID: %s" % ("ĐẠT" if code == "SIGNATURE_VALID" else "KHÔNG ĐẠT"))
+    return code == "SIGNATURE_VALID" and received_packet == signed_packet
 
 
 def percentile(values: list[float], fraction: float) -> float:
@@ -185,6 +196,11 @@ def main() -> int:
     parser.add_argument("--flow", action="store_true", help="print one successful G1-G8 flow")
     parser.add_argument("--bench", action="store_true", help="benchmark RSA primitives")
     parser.add_argument("--no-unit", action="store_true", help="skip six unit-level checks in full run")
+    parser.add_argument(
+        "--verbose",
+        action="store_true",
+        help="show full payloads, hashes, signatures and T0-T5 traces",
+    )
     args = parser.parse_args()
 
     if args.flow:
@@ -202,15 +218,19 @@ def main() -> int:
         # KS-02 and KS-06 reuse the original KS-01 nonce; KS-09 verifies its
         # stored signature. Seed the necessary fixture first.
         if args.ks in {2, 6, 9}:
-            scenarios[0].chay(env)
-        ok = chosen.chay(env)
+            # Seed KS-01 without printing it as an extra scenario in this run.
+            with contextlib.redirect_stdout(io.StringIO()):
+                scenarios[0].chay(env)
+        ok = chosen.chay(env, verbose=args.verbose)
         return 0 if ok else 1
 
+    flow_ok = run_flow()
+    print("\nKẾT QUẢ CÁC KỊCH BẢN KS")
     env = create_environment(clock=FrozenClock(BASE_TIME))
-    results = [module.chay(env) for module in scenarios]
+    results = [module.chay(env, verbose=args.verbose) for module in scenarios]
     print("\nEND-TO-END: %d/%d passed" % (sum(results), len(results)))
     unit_ok = True if args.no_unit else run_unit_checks()
-    return 0 if all(results) and unit_ok else 1
+    return 0 if flow_ok and all(results) and unit_ok else 1
 
 
 if __name__ == "__main__":

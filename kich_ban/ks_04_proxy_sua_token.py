@@ -8,7 +8,7 @@ KY_VONG = "INTEGRITY_VIOLATION"
 TANG = "T4"
 
 
-def chay(env):
+def chay(env, *, verbose: bool = False):
     packet = env.merchant.create_packet(message_id="TX-2026-0004", card_token="tok_9f2e77ab")
     tampered = Proxy.modify(packet, "CardToken", "tok_9f2e77ac")
     return report_result(
@@ -17,6 +17,7 @@ def chay(env):
         TEN,
         tampered,
         KY_VONG,
+        verbose=verbose,
         original_packet=packet,
         scenario_note="Proxy đổi một ký tự trong CardToken sau khi ký; MessageHash và Signature vẫn là giá trị cũ.",
     )

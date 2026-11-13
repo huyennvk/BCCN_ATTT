@@ -7,7 +7,7 @@ KY_VONG = "MALFORMED"
 TANG = "T0"
 
 
-def chay(env):
+def chay(env, *, verbose: bool = False):
     original = env.merchant.create_packet(message_id="TX-2026-0011")
     packet = dict(original)
     del packet["MessageHash"]
@@ -17,6 +17,7 @@ def chay(env):
         TEN,
         packet,
         KY_VONG,
+        verbose=verbose,
         original_packet=original,
         scenario_note="Proxy xóa trường MessageHash khỏi envelope; các trường khác được giữ nguyên.",
     )

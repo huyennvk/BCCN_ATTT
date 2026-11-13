@@ -7,7 +7,7 @@ KY_VONG = "SIGNATURE_VALID"
 TANG = "T0/T1/T1b/T4/T5"
 
 
-def chay(env):
+def chay(env, *, verbose: bool = False):
     packet = env.data.get("ks01_packet")
     if packet is None:
         packet = env.merchant.create_packet(message_id="TX-2026-0009")
@@ -18,6 +18,7 @@ def chay(env):
         TEN,
         packet,
         KY_VONG,
+        verbose=verbose,
         mode="postcheck",
         original_packet=packet,
         scenario_note="Issuer hậu kiểm bản tin đã lưu; bỏ qua kiểm tra Timestamp mới và tiêu thụ Nonce lần nữa.",

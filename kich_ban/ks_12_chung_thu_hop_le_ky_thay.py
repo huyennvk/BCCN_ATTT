@@ -7,7 +7,7 @@ KY_VONG = "SIGNER_NOT_AUTHORIZED"
 TANG = "T1b"
 
 
-def chay(env):
+def chay(env, *, verbose: bool = False):
     payload = env.merchant.make_payload(
         message_id="TX-2026-0012",
         amount=99_000_000,
@@ -20,5 +20,6 @@ def chay(env):
         TEN,
         packet,
         KY_VONG,
+        verbose=verbose,
         scenario_note="ATTACK-01 ký payload tự khai MerchantID=MERCH-01; CertificateID thuộc chứng thư của ATTACK-01.",
     )

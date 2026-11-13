@@ -10,7 +10,7 @@ KY_VONG = "SIGNATURE_INVALID"
 TANG = "T5"
 
 
-def chay(env):
+def chay(env, *, verbose: bool = False):
     original = env.merchant.create_packet(message_id="TX-2026-0007")
     packet = copy.deepcopy(original)
     packet["Signature"] = sign(
@@ -24,6 +24,7 @@ def chay(env):
         TEN,
         packet,
         KY_VONG,
+        verbose=verbose,
         original_packet=original,
         scenario_note="Payload và MessageHash không đổi; chỉ Signature được tạo lại bằng khóa ATTACK-01, còn CertificateID của Merchant được giữ nguyên.",
     )
