@@ -14,4 +14,12 @@ def chay(env):
         message_id="TX-2026-0005",
         timestamp=env.clock.now() - timedelta(hours=1),
     )
-    return report_result(env, SO, TEN, packet, KY_VONG)
+    return report_result(
+        env,
+        SO,
+        TEN,
+        packet,
+        KY_VONG,
+        original_packet=packet,
+        scenario_note="Timestamp cũ hơn đồng hồ Issuer một giờ; Nonce mới, payload và chữ ký được tạo cùng nhau.",
+    )

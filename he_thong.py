@@ -251,35 +251,96 @@ class Issuer:
             self._append_audit(code, packet, mode)
             return code
 
-        if not isinstance(packet, dict) or set(packet) != ENVELOPE_FIELDS:
-            steps.append("T0 structure: reject -> MALFORMED")
+        if not isinstance(packet, dict):
+            steps.append(
+                "T0 envelope: expected JSON object/dict; received %s -> MALFORMED"
+                % type(packet).__name__
+            )
             return finish("MALFORMED")
+        expected_envelope = sorted(ENVELOPE_FIELDS)
+        received_envelope = sorted(str(key) for key in packet)
+        missing_envelope = sorted(ENVELOPE_FIELDS - set(packet))
+        extra_envelope = sorted(str(key) for key in set(packet) - ENVELOPE_FIELDS)
+        steps.append(
+            "T0 envelope fields: received=[%s]; expected=[%s]"
+            % (", ".join(received_envelope), ", ".join(expected_envelope))
+        )
+        if missing_envelope or extra_envelope:
+            steps.append(
+                "T0 envelope result: missing=[%s], extra=[%s] -> MALFORMED"
+                % (", ".join(missing_envelope), ", ".join(extra_envelope))
+            )
+            return finish("MALFORMED")
+
         payload = packet.get("payload")
         code = validate_payload(payload)
         if code:
+            if isinstance(payload, dict):
+                payload_fields = sorted(str(key) for key in payload)
+                missing_payload = sorted(PAYLOAD_FIELDS - set(payload))
+                extra_payload = sorted(str(key) for key in set(payload) - PAYLOAD_FIELDS)
+                steps.append(
+                    "T0 payload fields: received=[%s]; missing=[%s]; extra=[%s]"
+                    % (", ".join(payload_fields), ", ".join(missing_payload), ", ".join(extra_payload))
+                )
+            else:
+                steps.append("T0 payload: expected object/dict; received %s" % type(payload).__name__)
             steps.append("T0 payload schema: reject -> MALFORMED")
             return finish(code)
-        if not isinstance(packet.get("MessageHash"), str) or not HASH_RE.fullmatch(packet["MessageHash"]):
-            steps.append("T0 message hash format: reject -> MALFORMED")
+        steps.append(
+            "T0 payload schema: 7/7 required fields present; Amount=%s %s; MerchantID=%s; MessageID=%s"
+            % (payload["Amount"], payload["Currency"], payload["MerchantID"], payload["MessageID"])
+        )
+
+        message_hash = packet.get("MessageHash")
+        if not isinstance(message_hash, str) or not HASH_RE.fullmatch(message_hash):
+            length = len(message_hash) if isinstance(message_hash, str) else "n/a"
+            steps.append(
+                "T0 MessageHash encoding: expected 64 lowercase hex chars; received length=%s -> MALFORMED"
+                % length
+            )
             return finish("MALFORMED")
+        steps.append("T0 MessageHash encoding: 64 lowercase hex chars")
+
         signature_hex = packet.get("Signature")
         if (
             not isinstance(signature_hex, str)
             or len(signature_hex) > 2048
             or not SIGNATURE_RE.fullmatch(signature_hex)
         ):
-            steps.append("T0 signature encoding: reject -> MALFORMED")
+            length = len(signature_hex) if isinstance(signature_hex, str) else "n/a"
+            steps.append(
+                "T0 Signature encoding: expected even-length hex up to 2048 chars; received length=%s -> MALFORMED"
+                % length
+            )
             return finish("MALFORMED")
+        steps.append(
+            "T0 Signature encoding: %d hex chars (%d bytes)"
+            % (len(signature_hex), len(signature_hex) // 2)
+        )
+
         cert_id = packet.get("CertificateID")
         if not isinstance(cert_id, str) or not CERT_ID_RE.fullmatch(cert_id):
-            steps.append("T0 certificate id format: reject -> MALFORMED")
+            steps.append("T0 CertificateID encoding: expected sha256:<64 uppercase hex chars> -> MALFORMED")
             return finish("MALFORMED")
-        steps.append("T0 schema and encoding: pass")
+        steps.append("T0 CertificateID: %s" % cert_id)
+        steps.append("T0 result: PASS; T0 makes no transformation and forwards the received packet unchanged to T1")
 
         now = self.clock.now().astimezone(UTC)
+        steps.append(
+            "T1 inputs: CertificateID=%s; signed Timestamp=%s; verifier now=%s"
+            % (cert_id, payload["Timestamp"], format_timestamp(now))
+        )
         try:
             signed_at = parse_timestamp(payload["Timestamp"])
             crl = self._get_current_crl()
+            if crl is None:
+                steps.append("T1 CRL input: unavailable (no current CRL and no unexpired cache)")
+            else:
+                steps.append(
+                    "T1 CRL input: lastUpdate=%s; nextUpdate=%s"
+                    % (crl.last_update_utc.isoformat(), crl.next_update_utc.isoformat())
+                )
             cert_result = self.ca.validate_certificate(
                 cert_id,
                 signed_at,
@@ -291,55 +352,147 @@ class Issuer:
             steps.append("T1 certificate input: reject -> MALFORMED")
             return finish("MALFORMED")
         if cert_result.code != "OK" or cert_result.certificate is None:
-            steps.append("T1 certificate/CRL: reject -> %s" % cert_result.code)
+            steps.append(
+                "T1 certificate/CRL result: CertificateID=%s; code=%s"
+                % (cert_id, cert_result.code)
+            )
+            if cert_result.certificate is not None:
+                rejected_cert = cert_result.certificate
+                rejected_key = rejected_cert.public_key()
+                key_bits = getattr(rejected_key, "key_size", "unknown")
+                public_numbers = rejected_key.public_numbers() if hasattr(rejected_key, "public_numbers") else None
+                exponent = getattr(public_numbers, "e", None)
+                key_description = (
+                    "RSA-%s/e=%s" % (key_bits, exponent)
+                    if exponent is not None
+                    else "%s (%s-bit)" % (type(rejected_key).__name__, key_bits)
+                )
+                steps.append(
+                    "T1 certificate details: subject=%s; public_key=%s; validity=[%s, %s]"
+                    % (
+                        rejected_cert.subject.rfc4514_string(),
+                        key_description,
+                        rejected_cert.not_valid_before_utc.isoformat(),
+                        rejected_cert.not_valid_after_utc.isoformat(),
+                    )
+                )
+                if cert_result.code == "CERT_REVOKED" and crl is not None:
+                    revoked_record = crl.get_revoked_certificate_by_serial_number(rejected_cert.serial_number)
+                    if revoked_record is not None:
+                        steps.append(
+                            "T1 CRL revocation record: serial=%s; revoked_at=%s"
+                            % (rejected_cert.serial_number, revoked_record.revocation_date_utc.isoformat())
+                        )
             return finish(cert_result.code)
         cert = cert_result.certificate
-        steps.append("T1 certificate chain, validity, revocation and key policy: pass")
+        public_key = cert.public_key()
+        steps.append(
+            "T1 certificate details: subject=%s; public_key=RSA-%d/e=%d; validity=[%s, %s]"
+            % (
+                cert.subject.rfc4514_string(),
+                public_key.key_size,
+                public_key.public_numbers().e,
+                cert.not_valid_before_utc.isoformat(),
+                cert.not_valid_after_utc.isoformat(),
+            )
+        )
+        steps.append("T1 certificate chain, validity, revocation and key policy: PASS")
 
         merchant_id = payload["MerchantID"]
         cert_identity = self.ca.merchant_identity(cert)
-        if cert_identity != merchant_id or cert_id not in self.registry.get(merchant_id, set()):
-            steps.append("T1b certificate identity/registry: reject -> SIGNER_NOT_AUTHORIZED")
+        registered = cert_id in self.registry.get(merchant_id, set())
+        steps.append(
+            "T1b identity comparison: payload.MerchantID=%s; certificate identity=%s; registered_for_MerchantID=%s"
+            % (merchant_id, cert_identity, "YES" if registered else "NO")
+        )
+        if cert_identity != merchant_id or not registered:
+            steps.append("T1b result: FAIL -> SIGNER_NOT_AUTHORIZED")
             return finish("SIGNER_NOT_AUTHORIZED")
-        steps.append("T1b certificate identity and merchant registry: pass")
+        steps.append("T1b result: PASS; certificate identity is authorized for this MerchantID")
 
         if mode == "live":
             delta = (now - signed_at).total_seconds()
+            steps.append(
+                "T2 Timestamp comparison: signed_at=%s; verifier_now=%s; age=%+.0f s; allowed=[-%d, +%d] s"
+                % (
+                    format_timestamp(signed_at),
+                    format_timestamp(now),
+                    delta,
+                    self.window_seconds,
+                    self.window_seconds,
+                )
+            )
             if delta > self.window_seconds:
-                steps.append("T2 timestamp: outside window -> TIMESTAMP_TOO_OLD")
+                steps.append("T2 result: FAIL, Timestamp is too old -> TIMESTAMP_TOO_OLD")
                 return finish("TIMESTAMP_TOO_OLD")
             if delta < -self.window_seconds:
-                steps.append("T2 timestamp: future value outside window -> TIMESTAMP_IN_FUTURE")
+                steps.append("T2 result: FAIL, Timestamp is too far in the future -> TIMESTAMP_IN_FUTURE")
                 return finish("TIMESTAMP_IN_FUTURE")
-            steps.append("T2 timestamp window: pass")
+            steps.append("T2 result: PASS; Timestamp is within the allowed window")
             try:
-                if self.replay_store.nonce_seen(merchant_id, payload["Nonce"], now.timestamp()):
-                    steps.append("T3 nonce: already used -> REPLAY_DETECTED")
+                nonce_seen = self.replay_store.nonce_seen(
+                    merchant_id,
+                    payload["Nonce"],
+                    now.timestamp(),
+                )
+                steps.append(
+                    "T3 nonce lookup: MerchantID=%s; Nonce=%s; already_seen=%s"
+                    % (merchant_id, payload["Nonce"], "YES" if nonce_seen else "NO")
+                )
+                if nonce_seen:
+                    steps.append("T3 result: FAIL -> REPLAY_DETECTED")
                     return finish("REPLAY_DETECTED")
             except ReplayStoreUnavailable:
-                steps.append("T3 nonce store unavailable: fail closed")
+                steps.append("T3 nonce store unavailable: fail closed -> SERVICE_UNAVAILABLE")
                 return finish("SERVICE_UNAVAILABLE")
-            steps.append("T3 nonce lookup: pass")
+            steps.append("T3 result: PASS; nonce is not present in replay store")
+        else:
+            steps.append("T2/T3 freshness and replay checks: SKIPPED (mode=postcheck)")
 
         try:
             canonical = canonical_json_bytes(payload)
-        except CanonicalizationError:
-            steps.append("T4 canonicalization: reject -> MALFORMED")
+        except CanonicalizationError as exc:
+            steps.append("T4 canonicalization: failed (%s) -> MALFORMED" % exc)
             return finish("MALFORMED")
+        canonical_text = canonical.decode("utf-8")
+        steps.append(
+            "T4 canonical JSON: %d UTF-8 bytes = %s"
+            % (len(canonical), canonical_text)
+        )
         computed_hash = sha256_hex(canonical)
-        if computed_hash != packet["MessageHash"]:
-            steps.append("T4 message digest: mismatch -> INTEGRITY_VIOLATION")
+        declared_hash = packet["MessageHash"]
+        hashes_match = computed_hash == declared_hash
+        steps.append(
+            "T4 SHA-256 comparison: recalculated=%s; envelope MessageHash=%s; match=%s"
+            % (computed_hash, declared_hash, "YES" if hashes_match else "NO")
+        )
+        if not hashes_match:
+            steps.append("T4 result: FAIL -> INTEGRITY_VIOLATION")
             return finish("INTEGRITY_VIOLATION")
-        steps.append("T4 message digest: pass")
+        steps.append("T4 result: PASS; payload matches its declared MessageHash")
 
         public_key = cert.public_key()
         signature = bytes.fromhex(packet["Signature"])
-        if not verify(public_key, canonical, signature):
-            steps.append("T5 RSA-PSS signature: reject -> SIGNATURE_INVALID")
+        signature_valid = verify(public_key, canonical, signature)
+        steps.append(
+            "T5 RSA-PSS/SHA-256 verification: public_key=RSA-%d/e=%d; signature=%d bytes; verifies=%s"
+            % (
+                public_key.key_size,
+                public_key.public_numbers().e,
+                len(signature),
+                "YES" if signature_valid else "NO",
+            )
+        )
+        if not signature_valid:
+            steps.append("T5 result: FAIL -> SIGNATURE_INVALID")
             return finish("SIGNATURE_INVALID")
-        steps.append("T5 RSA-PSS signature: pass")
+        steps.append("T5 result: PASS; signature matches the canonical payload")
 
         if mode == "live":
+            steps.append(
+                "T3 atomic reservation input: MerchantID=%s; Nonce=%s; MessageID=%s"
+                % (merchant_id, payload["Nonce"], payload["MessageID"])
+            )
             try:
                 conflict = self.replay_store.consume(
                     merchant_id,
@@ -348,12 +501,12 @@ class Issuer:
                     now.timestamp(),
                 )
             except ReplayStoreUnavailable:
-                steps.append("T3 replay/idempotency commit unavailable: fail closed")
+                steps.append("T3 atomic reservation: state store unavailable; fail closed -> SERVICE_UNAVAILABLE")
                 return finish("SERVICE_UNAVAILABLE")
             if conflict:
-                steps.append("T3 atomic replay/idempotency commit: reject -> %s" % conflict)
+                steps.append("T3 atomic reservation result: conflict=%s" % conflict)
                 return finish(conflict)
-            steps.append("T3 atomic nonce and MessageID reservation: pass")
+            steps.append("T3 atomic reservation result: Nonce and MessageID stored successfully")
 
         return finish("SIGNATURE_VALID")
 

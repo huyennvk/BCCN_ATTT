@@ -12,4 +12,13 @@ def chay(env):
     if packet is None:
         packet = env.merchant.create_packet(message_id="TX-2026-0009")
         env.data["ks01_packet"] = packet
-    return report_result(env, SO, TEN, packet, KY_VONG, mode="postcheck")
+    return report_result(
+        env,
+        SO,
+        TEN,
+        packet,
+        KY_VONG,
+        mode="postcheck",
+        original_packet=packet,
+        scenario_note="Issuer hậu kiểm bản tin đã lưu; bỏ qua kiểm tra Timestamp mới và tiêu thụ Nonce lần nữa.",
+    )

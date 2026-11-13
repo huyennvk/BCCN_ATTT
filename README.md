@@ -40,6 +40,8 @@ python run_scenarios.py --flow
 python run_scenarios.py --bench
 ```
 
+Mỗi kịch bản in payload, chuỗi JSON chuẩn hóa dạng UTF-8, `MessageHash` SHA-256, độ dài/đoạn xem trước của chữ ký hex, các trường thay đổi (nếu có) và giá trị cụ thể được kiểm tra tại từng tầng. Chữ ký không mã hóa payload; ví dụ chỉ dùng dữ liệu giả lập. `--ks 3` hữu ích nếu muốn đọc chi tiết một kịch bản thay vì toàn bộ 12 kịch bản.
+
 Chạy kiểm thử tự động:
 
 ```bash

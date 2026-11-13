@@ -12,6 +12,15 @@ TANG = "T1"
 def chay(env):
     weak_key = rsa.generate_private_key(public_exponent=65537, key_size=1024)
     cert_id, _ = env.ca.issue("MERCH-01", weak_key.public_key())
-    packet = env.merchant.create_packet(message_id="TX-2026-0010")
+    original = env.merchant.create_packet(message_id="TX-2026-0010")
+    packet = dict(original)
     packet["CertificateID"] = cert_id
-    return report_result(env, SO, TEN, packet, KY_VONG)
+    return report_result(
+        env,
+        SO,
+        TEN,
+        packet,
+        KY_VONG,
+        original_packet=original,
+        scenario_note="Chỉ thay CertificateID bằng chứng thư khóa RSA-1024; payload và chữ ký vẫn từ khóa Merchant RSA-2048.",
+    )

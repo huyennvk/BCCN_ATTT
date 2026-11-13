@@ -1,6 +1,6 @@
 from datetime import timedelta
 
-from he_thong import format_timestamp
+from he_thong import Proxy
 from kich_ban.common import report_result
 
 SO = 1
@@ -17,4 +17,13 @@ def chay(env):
         timestamp=now - timedelta(seconds=10),
     )
     env.data["ks01_packet"] = packet
-    return report_result(env, SO, TEN, packet, KY_VONG)
+    forwarded = Proxy.forward(packet)
+    return report_result(
+        env,
+        SO,
+        TEN,
+        forwarded,
+        KY_VONG,
+        original_packet=packet,
+        scenario_note="Merchant tạo payload 7 trường, ký RSA-PSS; Proxy chuyển tiếp nguyên vẹn gói đến Issuer.",
+    )

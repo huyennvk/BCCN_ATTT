@@ -23,6 +23,36 @@ def test_all_twelve_report_scenarios_pass():
     assert all(results)
 
 
+def test_scenario_report_shows_data_representation_and_failure_stage(capsys):
+    env = make_env()
+    scenario = next(module for module in load_scenarios() if module.SO == 3)
+
+    assert scenario.chay(env)
+    output = capsys.readouterr().out
+
+    assert "Canonical JSON UTF-8" in output
+    assert "SHA-256(canonical JSON)" in output
+    assert "Signature RSA-PSS/SHA-256" in output
+    assert "payload.Amount: 150000 → 1500000" in output
+    assert "T4 SHA-256 comparison:" in output
+    assert "match=NO" in output
+    assert "T4 result: FAIL -> INTEGRITY_VIOLATION" in output
+    assert "T5" not in output
+
+
+def test_report_shows_missing_envelope_field_and_stops_at_t0(capsys):
+    env = make_env()
+    scenario = next(module for module in load_scenarios() if module.SO == 11)
+
+    assert scenario.chay(env)
+    output = capsys.readouterr().out
+
+    assert "missing=[MessageHash]" in output
+    assert "T0 envelope result: missing=[MessageHash]" in output
+    assert "T1 inputs:" not in output
+    assert "Issuer quyết định: MALFORMED | Kịch bản: ĐẠT" in output
+
+
 def test_six_additional_decision_codes_pass():
     assert run_unit_checks()
 
