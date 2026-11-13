@@ -9,11 +9,11 @@ KY_VONG = "REPLAY_DETECTED"
 TANG = "T3"
 
 
-def chay(env):
+def chay(env, *, verbose: bool = False):
     base = env.data.get("ks01_packet")
     if base is None:
         from kich_ban.ks_01_ban_tin_chuan import chay as chay_ks01
-        chay_ks01(env)
+        chay_ks01(env, verbose=verbose)
         base = env.data["ks01_packet"]
     packet = env.merchant.create_packet(
         message_id="TX-2026-0006",
@@ -26,6 +26,7 @@ def chay(env):
         TEN,
         packet,
         KY_VONG,
+        verbose=verbose,
         original_packet=packet,
         scenario_note="MessageID mới nhưng Nonce được lấy lại từ KS-01; Timestamp vẫn nằm trong cửa sổ cho phép.",
     )

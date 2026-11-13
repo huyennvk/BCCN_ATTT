@@ -9,7 +9,7 @@ from cryptography.x509.oid import NameOID
 from ca_service import CRL_TTL
 from he_thong import FrozenClock, create_environment
 from nonce_store import InMemoryReplayStore, NONCE_TTL_SECONDS
-from run_scenarios import BASE_TIME, load_scenarios, run_unit_checks
+from run_scenarios import BASE_TIME, load_scenarios, run_flow, run_unit_checks
 
 
 def make_env():
@@ -27,7 +27,7 @@ def test_scenario_report_shows_data_representation_and_failure_stage(capsys):
     env = make_env()
     scenario = next(module for module in load_scenarios() if module.SO == 3)
 
-    assert scenario.chay(env)
+    assert scenario.chay(env, verbose=True)
     output = capsys.readouterr().out
 
     assert "Canonical JSON UTF-8" in output
@@ -40,11 +40,40 @@ def test_scenario_report_shows_data_representation_and_failure_stage(capsys):
     assert "T5" not in output
 
 
+def test_compact_report_prints_only_the_scenario_result(capsys):
+    env = make_env()
+    scenario = next(module for module in load_scenarios() if module.SO == 3)
+
+    assert scenario.chay(env)
+    output = capsys.readouterr().out.strip()
+
+    assert output.startswith("KS-03 · Proxy sửa Amount")
+    assert "INTEGRITY_VIOLATION" in output
+    assert "ĐẠT" in output
+    assert "payload" not in output
+    assert "SHA-256" not in output
+    assert "T4" not in output
+    assert len(output.splitlines()) == 1
+
+
+def test_flow_demo_prints_full_transform_sample(capsys):
+    assert run_flow()
+    output = capsys.readouterr().out
+
+    assert "Payload JSON (dữ liệu có thể đọc)" in output
+    assert "Canonical JSON UTF-8" in output
+    assert "SHA-256(canonical JSON)" in output
+    assert "Signature RSA-PSS/SHA-256" in output
+    assert "T0 envelope fields:" in output
+    assert "T5 result: PASS" in output
+    assert "payload không bị mã hóa" in output
+
+
 def test_report_shows_missing_envelope_field_and_stops_at_t0(capsys):
     env = make_env()
     scenario = next(module for module in load_scenarios() if module.SO == 11)
 
-    assert scenario.chay(env)
+    assert scenario.chay(env, verbose=True)
     output = capsys.readouterr().out
 
     assert "missing=[MessageHash]" in output

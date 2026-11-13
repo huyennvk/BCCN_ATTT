@@ -9,7 +9,7 @@ KY_VONG = "CERT_REVOKED"
 TANG = "T1"
 
 
-def chay(env):
+def chay(env, *, verbose: bool = False):
     now = env.clock.now()
     env.ca.revoke(env.merchant.certificate_id, when=now - timedelta(seconds=5))
     packet = env.merchant.create_packet(message_id="TX-2026-0008", timestamp=now)
@@ -20,6 +20,7 @@ def chay(env):
             TEN,
             packet,
             KY_VONG,
+            verbose=verbose,
             original_packet=packet,
             scenario_note="CA đã thu hồi chứng thư trước khi Issuer nhận bản tin; payload và chữ ký vẫn đúng.",
         )
