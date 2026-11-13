@@ -240,6 +240,11 @@ class Issuer:
     ) -> str:
         """Run T0, T1, T1b, T2, T3, T4 and T5; return one decision code.
 
+        Raw JSON text/bytes are parsed here with the strict bounded parser.
+        Already-decoded dictionaries are accepted for in-process scenarios; a
+        network ingress must pass the original raw body so duplicate keys and
+        the 16 KiB limit can be enforced before decoding.
+
         ``mode='postcheck'`` omits freshness and replay consumption so a stored
         message can be re-verified. It does not create trusted time evidence.
         """
@@ -250,6 +255,16 @@ class Issuer:
         def finish(code: str) -> str:
             self._append_audit(code, packet, mode)
             return code
+
+        if isinstance(packet, (str, bytes)):
+            try:
+                packet = parse_incoming_json(packet)
+                steps.append("T0 JSON parsing: PASS; strict 16 KiB parser accepted the raw body")
+            except ValueError:
+                steps.append(
+                    "T0 JSON parsing: invalid, ambiguous or over 16 KiB -> MALFORMED"
+                )
+                return finish("MALFORMED")
 
         if not isinstance(packet, dict):
             steps.append(

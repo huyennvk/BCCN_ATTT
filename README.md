@@ -10,7 +10,7 @@
 - `ca_service.py` — CA X.509 một tầng dùng trong demo, chứng thư lá, CRL X.509 được ký và kiểm tra trạng thái thu hồi; CRL demo có thời hạn 1 giờ, tự làm mới khi hết hạn và không thay thế OCSP/CA production.
 - `nonce_store.py` — kho nonce/idempotency trong bộ nhớ có khóa đồng thời; adapter Redis tùy chọn dùng Lua để đặt nonce và `MessageID` nguyên tử.
 - `audit_log.py` — nhật ký JSONL dạng chuỗi băm; phát hiện sửa bản ghi nhưng **không** chống được quản trị viên có thể viết lại toàn bộ file.
-- `he_thong.py` — Merchant, Proxy, Issuer và pipeline xác minh T0–T5.
+- `he_thong.py` — Merchant, Proxy, Issuer và pipeline xác minh T0–T5; `Issuer.verify_packet` nhận raw JSON để áp dụng parser nghiêm ngặt ngay tại ranh giới tiếp nhận (dict chỉ dành cho thử nghiệm nội bộ).
 - `kich_ban/ks_01_…ks_12_*.py` — 12 kịch bản đầu-cuối của báo cáo.
 - `run_scenarios.py` — chạy kịch bản, kiểm tra sáu mã lỗi bổ sung, demo luồng và đo primitive mật mã.
 - `tests/` — kiểm thử RSA-PSS, schema, chống phát lại, idempotency, đồng thời và audit log.
