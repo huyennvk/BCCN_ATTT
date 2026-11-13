@@ -46,8 +46,9 @@ def test_strict_json_rejects_duplicate_keys_even_after_nfc():
         strict_json_loads('{"é":1,"e\\u0301":2}')
 
 
-def test_strict_json_rejects_float_and_oversized_input():
-    with pytest.raises(CanonicalizationError):
-        strict_json_loads('{"Amount":1.0}')
+def test_strict_json_rejects_float_non_finite_and_oversized_input():
+    for raw in ('{"Amount":1.0}', '{"Amount":NaN}', '{"Amount":Infinity}'):
+        with pytest.raises(CanonicalizationError):
+            strict_json_loads(raw)
     with pytest.raises(CanonicalizationError):
         strict_json_loads(" " * 16_385)

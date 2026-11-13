@@ -1,5 +1,6 @@
 import concurrent.futures
 import datetime as dt
+import json
 
 import pytest
 from cryptography import x509
@@ -14,6 +15,31 @@ from run_scenarios import BASE_TIME, load_scenarios, run_flow, run_unit_checks
 
 def make_env():
     return create_environment(clock=FrozenClock(BASE_TIME))
+
+
+def test_verify_packet_strictly_parses_raw_json_at_ingress():
+    env = make_env()
+    packet = env.merchant.create_packet(message_id="RAW-JSON-001")
+    raw = json.dumps(packet, ensure_ascii=False, separators=(",", ":"))
+    trace = []
+
+    assert env.issuer.verify_packet(raw, trace=trace) == "SIGNATURE_VALID"
+    assert trace[0].startswith("T0 JSON parsing: PASS")
+
+
+def test_verify_packet_rejects_ambiguous_non_finite_and_oversized_json():
+    env = make_env()
+    invalid_inputs = (
+        '{"payload":{},"payload":{}}',
+        '{"Amount":1.5}',
+        '{"Amount":NaN}',
+        " " * 16_385,
+    )
+
+    for raw in invalid_inputs:
+        trace = []
+        assert env.issuer.verify_packet(raw, trace=trace) == "MALFORMED"
+        assert trace[0].startswith("T0 JSON parsing:")
 
 
 def test_all_twelve_report_scenarios_pass():
@@ -95,6 +121,21 @@ def test_same_message_id_with_fresh_nonce_is_rejected_as_duplicate():
     assert env.issuer.verify_packet(second) == "DUPLICATE_MESSAGE"
 
 
+def test_concurrent_same_message_id_with_distinct_nonces_has_one_success():
+    env = make_env()
+    packets = [
+        env.merchant.create_packet(message_id="CONCURRENT-IDEMPOTENCY-001")
+        for _ in range(8)
+    ]
+    assert len({packet["payload"]["Nonce"] for packet in packets}) == len(packets)
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=8) as pool:
+        results = list(pool.map(env.issuer.verify_packet, packets))
+
+    assert results.count("SIGNATURE_VALID") == 1
+    assert results.count("DUPLICATE_MESSAGE") == 7
+
+
 def test_concurrent_duplicate_submission_has_one_success():
     env = make_env()
     packet = env.merchant.create_packet(message_id="CONCURRENT-001")
@@ -139,6 +180,13 @@ def test_issuer_rejects_replay_store_with_too_short_nonce_ttl():
 def test_certificate_without_digital_signature_usage_is_rejected():
     env = make_env()
     now = BASE_TIME
+    issued_key_usage = env.merchant.certificate.extensions.get_extension_for_class(x509.KeyUsage).value
+    issued_san = env.merchant.certificate.extensions.get_extension_for_class(x509.SubjectAlternativeName).value
+    assert issued_key_usage.digital_signature
+    assert issued_san.get_values_for_type(x509.UniformResourceIdentifier) == [
+        "urn:merchant:%s" % env.merchant.merchant_id
+    ]
+
     certificate = (
         x509.CertificateBuilder()
         .subject_name(x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, env.merchant.merchant_id)]))
@@ -191,6 +239,7 @@ def test_untrusted_backdated_timestamp_cannot_override_revocation():
 
 def test_demo_ca_renews_crl_when_next_update_is_reached():
     env = make_env()
+    assert CRL_TTL == dt.timedelta(hours=1)
     initial_crl = env.ca.get_crl()
 
     env.clock.advance(CRL_TTL)
