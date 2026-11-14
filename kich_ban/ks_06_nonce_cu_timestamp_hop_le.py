@@ -3,8 +3,8 @@ from datetime import timedelta
 from kich_ban.common import report_result
 
 SO = 6
-TEN = "Timestamp còn hạn, dùng lại nonce KS-01 với MessageID mới"
-NHOM = "Phát lại"
+TEN = "Merchant dùng lại nonce KS-01 với MessageID mới"
+NHOM = "Thời gian và chống phát lại"
 KY_VONG = "REPLAY_DETECTED"
 TANG = "T3"
 
@@ -28,5 +28,8 @@ def chay(env, *, verbose: bool = False):
         KY_VONG,
         verbose=verbose,
         original_packet=packet,
-        scenario_note="MessageID mới nhưng Nonce được lấy lại từ KS-01; Timestamp vẫn nằm trong cửa sổ cho phép.",
+        scenario_note=(
+            "Merchant giữ khóa hợp lệ nhưng sinh lỗi khi tái sử dụng Nonce của KS-01; "
+            "MessageID mới, Timestamp còn hạn. Proxy chỉ chuyển tiếp gói và không thể tạo chữ ký mới."
+        ),
     )

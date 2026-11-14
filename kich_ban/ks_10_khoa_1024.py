@@ -4,7 +4,7 @@ from kich_ban.common import report_result
 
 SO = 10
 TEN = "Chứng thư CA cấp cho khóa RSA-1024"
-NHOM = "Danh tính"
+NHOM = "Chữ ký và chính sách khóa"
 KY_VONG = "KEY_TOO_WEAK"
 TANG = "T1"
 

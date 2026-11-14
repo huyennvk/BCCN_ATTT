@@ -3,7 +3,7 @@ from kich_ban.ks_01_ban_tin_chuan import chay as chay_ks01
 
 SO = 2
 TEN = "Gửi lại nguyên văn bản tin KS-01"
-NHOM = "Phát lại"
+NHOM = "Thời gian và chống phát lại"
 KY_VONG = "REPLAY_DETECTED"
 TANG = "T3"
 

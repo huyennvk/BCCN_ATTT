@@ -5,7 +5,7 @@ from rsa_crypto import canonical_json_bytes, sign
 
 SO = 7
 TEN = "Ký bằng khóa lạ nhưng khai báo chứng thư Merchant"
-NHOM = "Danh tính"
+NHOM = "Chữ ký và chính sách khóa"
 KY_VONG = "SIGNATURE_INVALID"
 TANG = "T5"
 

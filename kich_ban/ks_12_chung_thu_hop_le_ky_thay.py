@@ -2,7 +2,7 @@ from kich_ban.common import report_result
 
 SO = 12
 TEN = "Chứng thư hợp lệ của ATTACK-01 ký thay MERCH-01"
-NHOM = "Danh tính"
+NHOM = "Chứng thư và quyền ký"
 KY_VONG = "SIGNER_NOT_AUTHORIZED"
 TANG = "T1b"
 

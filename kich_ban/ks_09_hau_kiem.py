@@ -2,7 +2,7 @@ from kich_ban.common import report_result
 
 SO = 9
 TEN = "Hậu kiểm độc lập bản tin KS-01 đã lưu"
-NHOM = "Bình thường"
+NHOM = "Luồng hợp lệ và hậu kiểm"
 KY_VONG = "SIGNATURE_VALID"
 TANG = "T0/T1/T1b/T4/T5"
 

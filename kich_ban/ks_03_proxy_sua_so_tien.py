@@ -3,7 +3,7 @@ from he_thong import Proxy
 
 SO = 3
 TEN = "Proxy sửa Amount 150000 thành 1500000"
-NHOM = "Toàn vẹn"
+NHOM = "Toàn vẹn và cấu trúc"
 KY_VONG = "INTEGRITY_VIOLATION"
 TANG = "T4"
 

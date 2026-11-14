@@ -4,7 +4,7 @@ from kich_ban.common import report_result
 
 SO = 8
 TEN = "Ký bản tin bằng chứng thư Merchant đã bị thu hồi"
-NHOM = "Danh tính"
+NHOM = "Chứng thư và quyền ký"
 KY_VONG = "CERT_REVOKED"
 TANG = "T1"
 
