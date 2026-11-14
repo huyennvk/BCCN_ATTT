@@ -35,7 +35,7 @@ python run_scenarios.py --flow
 python run_scenarios.py --bench
 ```
 
-Mọi chế độ chạy kịch bản (`mặc định`, `--ks`, `--flow`, và cả `--verbose`) chỉ in trạng thái PASS theo từng tầng đã qua, mã lỗi tại tầng dừng, cùng kết quả cuối của kịch bản. Không in payload, trường dữ liệu, giá trị/hash/chữ ký hoặc dữ liệu trung gian. `--verbose` được giữ để tương thích với lệnh cũ nhưng không bật đầu ra chi tiết. Payload trong nguyên mẫu không được mã hóa; chữ ký không che nội dung.
+Mọi chế độ chạy kịch bản (`mặc định`, `--ks`, `--flow`, và cả `--verbose`) in các mốc G2–G4 của Merchant/Proxy, các tầng T bên trong G5 của Issuer, quyết định G6 và đối chiếu G8. Đầu ra chỉ gồm trạng thái PASS/lỗi, không in payload, trường dữ liệu, giá trị/hash/chữ ký hay dữ liệu trung gian. `--verbose` được giữ để tương thích nhưng không bật thêm chi tiết. Payload trong nguyên mẫu không được mã hóa; chữ ký không che nội dung.
 
 Chạy kiểm thử tự động:
 

@@ -5,6 +5,7 @@ _ROOT = str(Path(__file__).resolve().parent.parent)
 if _ROOT not in sys.path:
     sys.path.insert(0, _ROOT)
 
+from he_thong import Proxy
 from kich_ban.common import report_result
 from kich_ban.ks_01_ban_tin_chuan import chay as chay_ks01
 
@@ -20,12 +21,17 @@ def chay(env, *, verbose: bool = False):
     if packet is None:
         chay_ks01(env)
         packet = env.data["ks01_packet"]
+    packet = Proxy.forward(packet)
     return report_result(
         env,
         SO,
         TEN,
         packet,
         KY_VONG,
+        group=NHOM,
+        g2_action="dùng lại bản tin đã tạo",
+        g3_action="dùng lại chữ ký đã tạo",
+        g4_action="chuyển tiếp lại",
     )
 
 
