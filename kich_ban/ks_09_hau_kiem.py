@@ -18,8 +18,5 @@ def chay(env, *, verbose: bool = False):
         TEN,
         packet,
         KY_VONG,
-        verbose=verbose,
         mode="postcheck",
-        original_packet=packet,
-        scenario_note="Issuer hậu kiểm bản tin đã lưu; bỏ qua kiểm tra Timestamp mới và tiêu thụ Nonce lần nữa.",
     )

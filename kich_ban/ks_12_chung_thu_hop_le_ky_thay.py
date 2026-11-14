@@ -20,6 +20,4 @@ def chay(env, *, verbose: bool = False):
         TEN,
         packet,
         KY_VONG,
-        verbose=verbose,
-        scenario_note="ATTACK-01 ký payload tự khai MerchantID=MERCH-01; CertificateID thuộc chứng thư của ATTACK-01.",
     )

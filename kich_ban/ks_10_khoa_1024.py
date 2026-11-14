@@ -21,7 +21,4 @@ def chay(env, *, verbose: bool = False):
         TEN,
         packet,
         KY_VONG,
-        verbose=verbose,
-        original_packet=original,
-        scenario_note="Chỉ thay CertificateID bằng chứng thư khóa RSA-1024; payload và chữ ký vẫn từ khóa Merchant RSA-2048.",
     )

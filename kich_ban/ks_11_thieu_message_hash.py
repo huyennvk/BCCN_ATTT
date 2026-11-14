@@ -17,7 +17,4 @@ def chay(env, *, verbose: bool = False):
         TEN,
         packet,
         KY_VONG,
-        verbose=verbose,
-        original_packet=original,
-        scenario_note="Proxy xóa trường MessageHash khỏi envelope; các trường khác được giữ nguyên.",
     )

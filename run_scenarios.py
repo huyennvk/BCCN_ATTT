@@ -20,7 +20,7 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 import kich_ban
 from ca_service import DemoCA
 from he_thong import FrozenClock, Proxy, create_environment
-from kich_ban.common import print_packet_material
+from kich_ban.common import format_layer_path
 from rsa_crypto import canonical_json_bytes, generate_private_key, sign, verify
 
 BASE_TIME = dt.datetime(2026, 9, 24, 8, 0, 0, tzinfo=dt.timezone.utc)
@@ -35,13 +35,18 @@ def load_scenarios() -> list[Any]:
 
 
 def run_unit_checks() -> bool:
-    """Exercise the six additional decision codes from the report."""
+    """Run the six additional decision checks and print only layers/statuses."""
     env = create_environment(clock=FrozenClock(BASE_TIME))
-    checks: list[tuple[str, str]] = []
+    checks: list[tuple[str, str, list[str]]] = []
+
+    def record(expected: str, packet: dict[str, Any]) -> None:
+        trace: list[str] = []
+        actual = env.issuer.verify_packet(packet, trace=trace)
+        checks.append((expected, actual, trace))
 
     packet = env.merchant.create_packet(message_id="UNIT-CERT-NOT-FOUND")
     packet["CertificateID"] = "sha256:" + "0" * 64
-    checks.append(("CERT_NOT_FOUND", env.issuer.verify_packet(packet)))
+    record("CERT_NOT_FOUND", packet)
 
     foreign_ca = DemoCA(env.clock.now)
     foreign_key = generate_private_key(2048)
@@ -49,7 +54,7 @@ def run_unit_checks() -> bool:
     env.ca.certificates[foreign_id] = foreign_cert  # trust-store fault injection
     packet = env.merchant.create_packet(message_id="UNIT-CHAIN-INVALID")
     packet["CertificateID"] = foreign_id
-    checks.append(("CHAIN_INVALID", env.issuer.verify_packet(packet)))
+    record("CHAIN_INVALID", packet)
 
     now = env.clock.now()
     not_yet_key = generate_private_key(2048)
@@ -61,7 +66,7 @@ def run_unit_checks() -> bool:
     )
     packet = env.merchant.create_packet(message_id="UNIT-NOT-YET-VALID")
     packet["CertificateID"] = not_yet_id
-    checks.append(("CERT_NOT_YET_VALID", env.issuer.verify_packet(packet)))
+    record("CERT_NOT_YET_VALID", packet)
 
     expired_key = generate_private_key(2048)
     expired_id, _ = env.ca.issue(
@@ -72,51 +77,44 @@ def run_unit_checks() -> bool:
     )
     packet = env.merchant.create_packet(message_id="UNIT-CERT-EXPIRED")
     packet["CertificateID"] = expired_id
-    checks.append(("CERT_EXPIRED", env.issuer.verify_packet(packet)))
+    record("CERT_EXPIRED", packet)
 
     weak_key = rsa.generate_private_key(public_exponent=3, key_size=2048)
     weak_id, _ = env.ca.issue("MERCH-01", weak_key.public_key())
     packet = env.merchant.create_packet(message_id="UNIT-WEAK-EXPONENT")
     packet["CertificateID"] = weak_id
-    checks.append(("WEAK_EXPONENT", env.issuer.verify_packet(packet)))
+    record("WEAK_EXPONENT", packet)
 
     packet = env.merchant.create_packet(message_id="UNIT-SERVICE-UNAVAILABLE")
     env.issuer.replay_store.down = True  # fail-closed fault injection
-    checks.append(("SERVICE_UNAVAILABLE", env.issuer.verify_packet(packet)))
-    env.issuer.replay_store.down = False
+    try:
+        record("SERVICE_UNAVAILABLE", packet)
+    finally:
+        env.issuer.replay_store.down = False
 
-    print("\nUNIT-LEVEL DECISION CHECKS")
     all_ok = True
-    for expected, actual in checks:
+    for expected, actual, trace in checks:
         ok = expected == actual
         all_ok = all_ok and ok
-        print("  expected=%-22s actual=%-22s %s" % (expected, actual, "PASS" if ok else "FAIL"))
+        print(
+            "UNIT %s %s | %s"
+            % (expected, "PASS" if ok else "FAIL", format_layer_path(actual, trace))
+        )
+    passed_count = sum(expected == actual for expected, actual, _ in checks)
+    print("UNIT CHECKS %s %d/%d" % ("PASS" if all_ok else "FAIL", passed_count, len(checks)))
     return all_ok
 
 
 def run_flow() -> bool:
-    """Print one full, successful sample from payload creation through verification."""
+    """Run one valid flow and show only its layer PASS/error path."""
     env = create_environment(clock=FrozenClock(BASE_TIME))
     signed_packet = env.merchant.create_packet(message_id="FLOW-2026-0001")
     received_packet = Proxy.forward(signed_packet)
     trace: list[str] = []
     code = env.issuer.verify_packet(received_packet, trace=trace)
-
-    print("\nMẪU CHI TIẾT LUỒNG GIAO DỊCH G1–G8")
-    print("[G1] Khởi tạo Demo CA, Merchant và Issuer.")
-    print("[G2–G3] Merchant tạo payload rồi chuẩn hóa, băm và ký:")
-    print_packet_material("Gói Merchant/Signer tạo:", signed_packet)
-    print(
-        "[G4] Proxy chuyển tiếp nguyên gói: %s"
-        % ("không thay đổi payload/hash/chữ ký" if received_packet == signed_packet else "gói đã thay đổi")
-    )
-    print("[G5] Issuer nhận gói và kiểm tra T0–T5:")
-    for line in trace:
-        print("  %s" % line)
-    print("[G6] Quyết định Issuer: %s" % code)
-    print("[G7] Audit head: %s" % env.issuer.audit_log.head)
-    print("[G8] Kỳ vọng SIGNATURE_VALID: %s" % ("ĐẠT" if code == "SIGNATURE_VALID" else "KHÔNG ĐẠT"))
-    return code == "SIGNATURE_VALID" and received_packet == signed_packet
+    ok = code == "SIGNATURE_VALID" and received_packet == signed_packet
+    print("FLOW %s | %s" % ("PASS" if ok else "FAIL", format_layer_path(code, trace)))
+    return ok
 
 
 def percentile(values: list[float], fraction: float) -> float:
@@ -193,15 +191,19 @@ def run_benchmark(iterations: int = 300) -> bool:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--ks", type=int, help="run one end-to-end scenario, 1..12")
-    parser.add_argument("--flow", action="store_true", help="print one successful G1-G8 flow")
-    parser.add_argument("--bench", action="store_true", help="benchmark RSA primitives")
-    parser.add_argument("--no-unit", action="store_true", help="skip six unit-level checks in full run")
     parser.add_argument(
-        "--verbose",
-        action="store_true",
-        help="show full payloads, hashes, signatures and T0-T5 traces",
+        "--flow", action="store_true", help="run one valid flow; print only layer statuses"
+    )
+    parser.add_argument("--bench", action="store_true", help="benchmark RSA primitives")
+    parser.add_argument(
+        "--verbose", action="store_true",
+        help="accepted for compatibility; no packet values or detailed traces are printed",
+    )
+    parser.add_argument(
+        "--no-unit", action="store_true", help="skip six unit-level checks in full run"
     )
     args = parser.parse_args()
+    # Deliberately do not expand --verbose into packet values or internal trace data.
 
     if args.flow:
         return 0 if run_flow() else 1
@@ -216,22 +218,25 @@ def main() -> int:
         env = create_environment(clock=FrozenClock(BASE_TIME))
         chosen = next(module for module in scenarios if module.SO == args.ks)
         # KS-02 and KS-06 reuse the original KS-01 nonce; KS-09 verifies its
-        # stored signature. Seed the necessary fixture first.
+        # stored signature. Seed the necessary fixture without extra output.
         if args.ks in {2, 6, 9}:
-            # Seed KS-01 without printing it as an extra scenario in this run.
             with contextlib.redirect_stdout(io.StringIO()):
                 scenarios[0].chay(env)
-        ok = chosen.chay(env, verbose=args.verbose)
-        return 0 if ok else 1
+        return 0 if chosen.chay(env) else 1
 
     flow_ok = run_flow()
-    print("\nKẾT QUẢ CÁC KỊCH BẢN KS")
     env = create_environment(clock=FrozenClock(BASE_TIME))
-    results = [module.chay(env, verbose=args.verbose) for module in scenarios]
-    print("\nEND-TO-END: %d/%d passed" % (sum(results), len(results)))
-    unit_ok = True if args.no_unit else run_unit_checks()
-    return 0 if flow_ok and all(results) and unit_ok else 1
+    results = [module.chay(env) for module in scenarios]
+    end_to_end_ok = all(results)
+    print(
+        "END-TO-END %s %d/%d"
+        % ("PASS" if end_to_end_ok else "FAIL", sum(results), len(results))
+    )
 
+    unit_ok = True if args.no_unit else run_unit_checks()
+    overall_ok = flow_ok and end_to_end_ok and unit_ok
+    print("OVERALL %s" % ("PASS" if overall_ok else "FAIL"))
+    return 0 if overall_ok else 1
 
 if __name__ == "__main__":
     raise SystemExit(main())

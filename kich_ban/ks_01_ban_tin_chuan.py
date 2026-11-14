@@ -24,7 +24,4 @@ def chay(env, *, verbose: bool = False):
         TEN,
         forwarded,
         KY_VONG,
-        verbose=verbose,
-        original_packet=packet,
-        scenario_note="Merchant tạo payload 7 trường, ký RSA-PSS; Proxy chuyển tiếp nguyên vẹn gói đến Issuer.",
     )

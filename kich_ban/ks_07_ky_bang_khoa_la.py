@@ -24,7 +24,4 @@ def chay(env, *, verbose: bool = False):
         TEN,
         packet,
         KY_VONG,
-        verbose=verbose,
-        original_packet=original,
-        scenario_note="Payload và MessageHash không đổi; chỉ Signature được tạo lại bằng khóa ATTACK-01, còn CertificateID của Merchant được giữ nguyên.",
     )

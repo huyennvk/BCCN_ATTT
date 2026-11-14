@@ -20,9 +20,6 @@ def chay(env, *, verbose: bool = False):
             TEN,
             packet,
             KY_VONG,
-            verbose=verbose,
-            original_packet=packet,
-            scenario_note="CA đã thu hồi chứng thư trước khi Issuer nhận bản tin; payload và chữ ký vẫn đúng.",
         )
     finally:
         # Kịch bản độc lập: phục hồi trạng thái CA để không làm nhiễm KS-09.
