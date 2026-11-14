@@ -555,6 +555,12 @@ class Proxy:
         result["payload"][field] = value
         return result
 
+    @staticmethod
+    def remove_envelope_field(packet: dict[str, Any], field: str) -> dict[str, Any]:
+        result = copy.deepcopy(packet)
+        result.pop(field, None)
+        return result
+
 
 def create_environment(
     *,

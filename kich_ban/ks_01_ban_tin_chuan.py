@@ -24,4 +24,5 @@ def chay(env, *, verbose: bool = False):
         TEN,
         forwarded,
         KY_VONG,
+        group=NHOM,
     )

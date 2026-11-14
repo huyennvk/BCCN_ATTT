@@ -5,6 +5,15 @@ from typing import Any
 from he_thong import Environment
 
 _LAYER_ORDER = ("T0", "T1", "T1b", "T2", "T3", "T4", "T5")
+_LAYER_LABELS = {
+    "T0": "cấu trúc",
+    "T1": "chứng thư",
+    "T1b": "danh tính",
+    "T2": "thời gian",
+    "T3": "chống phát lại",
+    "T4": "toàn vẹn",
+    "T5": "chữ ký",
+}
 _PASS_MARKERS = {
     "T0": "T0 result: PASS",
     "T1": "T1 certificate chain, validity, revocation and key policy: PASS",
@@ -81,6 +90,59 @@ def format_layer_path(actual: str, trace: list[str]) -> str:
     return " → ".join(events)
 
 
+def _log_layer_event(event: str) -> None:
+    parts = event.split(" ", 1)
+    layer = parts[0]
+    status = parts[1] if len(parts) == 2 else ""
+    label = _LAYER_LABELS.get(layer)
+    if label is None:
+        print("  [Issuer] G5 %s" % event)
+    else:
+        print("  [Issuer] G5 %s %s: %s" % (layer, label, status))
+
+
+def print_flow_log(
+    label: str,
+    actual: str,
+    expected: str,
+    trace: list[str],
+    *,
+    group: str | None = None,
+    g2_actor: str = "Merchant",
+    g2_action: str = "tạo bản tin",
+    g3_actor: str = "Merchant",
+    g3_action: str = "chuẩn hóa và ký",
+    g4_action: str | None = "chuyển tiếp",
+) -> bool:
+    """Print the G-stage flow with Issuer's T-layer results, without packet data."""
+    ok = actual == expected
+    path = format_layer_path(actual, trace)
+    last_event = path.split(" → ")[-1]
+    final_layer = last_event.split(" ", 1)[0]
+    if actual == "SIGNATURE_VALID":
+        stop_text = "hoàn tất"
+    elif final_layer in _LAYER_LABELS:
+        stop_text = "dừng tại %s" % final_layer
+    else:
+        stop_text = "dừng trong G5"
+
+    print("Trích log %s — %s" % (label, stop_text))
+    if group:
+        print("%s · NHÓM %s" % (label, group.upper()))
+    print("[%s] G2 %s: PASS" % (g2_actor, g2_action))
+    print("[%s] G3 %s: PASS" % (g3_actor, g3_action))
+    if g4_action is None:
+        print("[Proxy] G4 bỏ qua trong hậu kiểm bản tin đã lưu")
+    else:
+        print("[Proxy] G4 %s: PASS" % g4_action)
+    print("[Issuer] G5 xác minh:")
+    for event in path.split(" → "):
+        _log_layer_event(event)
+    print("[Phán quyết] G6: %s" % actual)
+    print("[Đối chiếu] G8 kỳ vọng/thực tế: %s" % ("PASS" if ok else "FAIL"))
+    return ok
+
+
 def report_result(
     env: Environment,
     number: int,
@@ -89,13 +151,24 @@ def report_result(
     expected: str,
     *,
     mode: str = "live",
+    group: str | None = None,
+    g2_actor: str = "Merchant",
+    g2_action: str = "tạo bản tin",
+    g3_actor: str = "Merchant",
+    g3_action: str = "chuẩn hóa và ký",
+    g4_action: str | None = "chuyển tiếp",
 ) -> bool:
     trace: list[str] = []
     actual = env.issuer.verify_packet(packet, mode=mode, trace=trace)
-    ok = actual == expected
-    path = format_layer_path(actual, trace)
-    if ok:
-        print("KS-%02d PASS | %s" % (number, path))
-    else:
-        print("KS-%02d FAIL | %s" % (number, path))
-    return ok
+    return print_flow_log(
+        "KS-%02d" % number,
+        actual,
+        expected,
+        trace,
+        group=group,
+        g2_actor=g2_actor,
+        g2_action=g2_action,
+        g3_actor=g3_actor,
+        g3_action=g3_action,
+        g4_action=g4_action,
+    )

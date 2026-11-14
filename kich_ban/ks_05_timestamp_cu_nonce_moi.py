@@ -27,6 +27,8 @@ def chay(env, *, verbose: bool = False):
             TEN,
             packet,
             KY_VONG,
+            group=NHOM,
+            g4_action="chuyển tiếp theo kịch bản",
         )
     finally:
         # Roll back this isolated time jump because the full scenario suite

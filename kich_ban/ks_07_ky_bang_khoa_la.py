@@ -1,5 +1,6 @@
 import copy
 
+from he_thong import Proxy
 from kich_ban.common import report_result
 from rsa_crypto import canonical_json_bytes, sign
 
@@ -18,10 +19,14 @@ def chay(env, *, verbose: bool = False):
         canonical_json_bytes(packet["payload"]),
     ).hex()
     # Giữ CertificateID của Merchant nhưng thay chữ ký bằng chữ ký ATTACK-01.
+    packet = Proxy.forward(packet)
     return report_result(
         env,
         SO,
         TEN,
         packet,
         KY_VONG,
+        group=NHOM,
+        g3_actor="ATTACK-01",
+        g3_action="ký theo kịch bản",
     )

@@ -1,5 +1,6 @@
 from cryptography.hazmat.primitives.asymmetric import rsa
 
+from he_thong import Proxy
 from kich_ban.common import report_result
 
 SO = 10
@@ -15,10 +16,12 @@ def chay(env, *, verbose: bool = False):
     original = env.merchant.create_packet(message_id="TX-2026-0010")
     packet = dict(original)
     packet["CertificateID"] = cert_id
+    packet = Proxy.forward(packet)
     return report_result(
         env,
         SO,
         TEN,
         packet,
         KY_VONG,
+        group=NHOM,
     )

@@ -20,7 +20,7 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 import kich_ban
 from ca_service import DemoCA
 from he_thong import FrozenClock, Proxy, create_environment
-from kich_ban.common import format_layer_path
+from kich_ban.common import format_layer_path, print_flow_log
 from rsa_crypto import canonical_json_bytes, generate_private_key, sign, verify
 
 BASE_TIME = dt.datetime(2026, 9, 24, 8, 0, 0, tzinfo=dt.timezone.utc)
@@ -106,15 +106,15 @@ def run_unit_checks() -> bool:
 
 
 def run_flow() -> bool:
-    """Run one valid flow and show only its layer PASS/error path."""
+    """Run one valid G-stage flow and show Issuer's T-layer results."""
     env = create_environment(clock=FrozenClock(BASE_TIME))
     signed_packet = env.merchant.create_packet(message_id="FLOW-2026-0001")
     received_packet = Proxy.forward(signed_packet)
     trace: list[str] = []
     code = env.issuer.verify_packet(received_packet, trace=trace)
     ok = code == "SIGNATURE_VALID" and received_packet == signed_packet
-    print("FLOW %s | %s" % ("PASS" if ok else "FAIL", format_layer_path(code, trace)))
-    return ok
+    reported_ok = print_flow_log("FLOW", code, "SIGNATURE_VALID", trace)
+    return ok and reported_ok
 
 
 def percentile(values: list[float], fraction: float) -> float:

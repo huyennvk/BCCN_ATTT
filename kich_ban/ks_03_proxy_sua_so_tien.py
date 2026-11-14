@@ -17,4 +17,6 @@ def chay(env, *, verbose: bool = False):
         TEN,
         tampered,
         KY_VONG,
+        group=NHOM,
+        g4_action="tác động theo kịch bản",
     )

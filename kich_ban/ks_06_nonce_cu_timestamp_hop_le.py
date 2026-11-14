@@ -1,5 +1,6 @@
 from datetime import timedelta
 
+from he_thong import Proxy
 from kich_ban.common import report_result
 
 SO = 6
@@ -20,10 +21,12 @@ def chay(env, *, verbose: bool = False):
         timestamp=env.clock.now() - timedelta(seconds=10),
         nonce=base["payload"]["Nonce"],
     )
+    packet = Proxy.forward(packet)
     return report_result(
         env,
         SO,
         TEN,
         packet,
         KY_VONG,
+        group=NHOM,
     )

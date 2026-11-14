@@ -1,3 +1,4 @@
+from he_thong import Proxy
 from kich_ban.common import report_result
 
 SO = 12
@@ -14,10 +15,13 @@ def chay(env, *, verbose: bool = False):
         merchant_id="MERCH-01",
     )
     packet = env.attacker.sign_payload(payload)
+    packet = Proxy.forward(packet)
     return report_result(
         env,
         SO,
         TEN,
         packet,
         KY_VONG,
+        group=NHOM,
+        g3_actor="ATTACK-01",
     )

@@ -56,45 +56,75 @@ def test_ks05_delayed_packet_is_rejected_at_t2_and_restores_clock(capsys):
 
     assert scenario.chay(env, verbose=True)
     assert env.clock.now() == BASE_TIME
-    assert capsys.readouterr().out.strip() == (
-        "KS-05 PASS | T0 PASS → T1 PASS → T1b PASS → T2 TIMESTAMP_TOO_OLD"
-    )
+    output = capsys.readouterr().out
+    assert "Trích log KS-05 — dừng tại T2" in output
+    assert "[Merchant] G2 tạo bản tin: PASS" in output
+    assert "[Merchant] G3 chuẩn hóa và ký: PASS" in output
+    assert "[Proxy] G4 chuyển tiếp theo kịch bản: PASS" in output
+    assert "[Issuer] G5 T2 thời gian: TIMESTAMP_TOO_OLD" in output
+    assert "[Phán quyết] G6: TIMESTAMP_TOO_OLD" in output
+    assert "[Đối chiếu] G8 kỳ vọng/thực tế: PASS" in output
 
 
-def test_scenario_report_is_compact_and_identifies_failure_layer(capsys):
+def test_scenario_report_logs_g_steps_and_stops_at_failure_layer(capsys):
     env = make_env()
     scenario = next(module for module in load_scenarios() if module.SO == 3)
 
     assert scenario.chay(env, verbose=True)
-    output = capsys.readouterr().out.strip()
+    output = capsys.readouterr().out
 
-    assert output == (
-        "KS-03 PASS | T0 PASS → T1 PASS → T1b PASS → T2 PASS → T3 PASS "
-        "→ T4 INTEGRITY_VIOLATION"
-    )
+    assert "Trích log KS-03 — dừng tại T4" in output
+    assert "KS-03 · NHÓM TOÀN VẸN VÀ CẤU TRÚC" in output
+    assert "[Merchant] G2 tạo bản tin: PASS" in output
+    assert "[Merchant] G3 chuẩn hóa và ký: PASS" in output
+    assert "[Proxy] G4 tác động theo kịch bản: PASS" in output
+    assert "[Issuer] G5 T0 cấu trúc: PASS" in output
+    assert "[Issuer] G5 T1 chứng thư: PASS" in output
+    assert "[Issuer] G5 T1b danh tính: PASS" in output
+    assert "[Issuer] G5 T2 thời gian: PASS" in output
+    assert "[Issuer] G5 T3 chống phát lại: PASS" in output
+    assert "[Issuer] G5 T4 toàn vẹn: INTEGRITY_VIOLATION" in output
+    assert "[Phán quyết] G6: INTEGRITY_VIOLATION" in output
+    assert "[Đối chiếu] G8 kỳ vọng/thực tế: PASS" in output
     for forbidden in ("payload", "Amount", "SHA-256", "Signature", "CertificateID", "150000"):
         assert forbidden not in output
 
 
-def test_compact_report_includes_scenario_result_and_only_layer_statuses(capsys):
+def test_ks06_logs_merchant_creation_and_proxy_forwarding(capsys, monkeypatch):
+    monkeypatch.setattr("sys.argv", ["run_scenarios.py", "--ks", "6"])
+    assert main() == 0
+    output = capsys.readouterr().out
+    assert "[Merchant] G2 tạo bản tin: PASS" in output
+    assert "[Merchant] G3 chuẩn hóa và ký: PASS" in output
+    assert "[Proxy] G4 chuyển tiếp: PASS" in output
+    assert "[Issuer] G5 T3 chống phát lại: REPLAY_DETECTED" in output
+    assert "[Phán quyết] G6: REPLAY_DETECTED" in output
+
+
+def test_ks12_logs_attacker_signing_not_proxy_signing(capsys):
     env = make_env()
-    scenario = next(module for module in load_scenarios() if module.SO == 1)
+    scenario = next(module for module in load_scenarios() if module.SO == 12)
 
     assert scenario.chay(env)
-    output = capsys.readouterr().out.strip()
-    assert output == (
-        "KS-01 PASS | T0 PASS → T1 PASS → T1b PASS → T2 PASS → T3 PASS "
-        "→ T4 PASS → T5 PASS"
-    )
+    output = capsys.readouterr().out
+    assert "[Merchant] G2 tạo bản tin: PASS" in output
+    assert "[ATTACK-01] G3 chuẩn hóa và ký: PASS" in output
+    assert "[Proxy] G4 chuyển tiếp: PASS" in output
+    assert "Proxy ký" not in output
+    assert "[Issuer] G5 T1b danh tính: SIGNER_NOT_AUTHORIZED" in output
 
 
-def test_flow_demo_prints_only_layer_statuses(capsys):
+def test_flow_log_includes_g_steps_and_nested_t_layers(capsys):
     assert run_flow()
-    output = capsys.readouterr().out.strip()
-    assert output == (
-        "FLOW PASS | T0 PASS → T1 PASS → T1b PASS → T2 PASS → T3 PASS "
-        "→ T4 PASS → T5 PASS"
-    )
+    output = capsys.readouterr().out
+    assert "Trích log FLOW — hoàn tất" in output
+    assert "[Merchant] G2 tạo bản tin: PASS" in output
+    assert "[Merchant] G3 chuẩn hóa và ký: PASS" in output
+    assert "[Proxy] G4 chuyển tiếp: PASS" in output
+    assert "[Issuer] G5 T0 cấu trúc: PASS" in output
+    assert "[Issuer] G5 T5 chữ ký: PASS" in output
+    assert "[Phán quyết] G6: SIGNATURE_VALID" in output
+    assert "[Đối chiếu] G8 kỳ vọng/thực tế: PASS" in output
     for forbidden in ("Payload", "MessageHash", "SHA-256", "Signature", "CertificateID"):
         assert forbidden not in output
 
@@ -104,10 +134,16 @@ def test_report_stops_at_t0_for_missing_envelope_field(capsys):
     scenario = next(module for module in load_scenarios() if module.SO == 11)
 
     assert scenario.chay(env, verbose=True)
-    assert capsys.readouterr().out.strip() == "KS-11 PASS | T0 MALFORMED"
+    output = capsys.readouterr().out
+    assert "Trích log KS-11 — dừng tại T0" in output
+    assert "[Proxy] G4 tác động theo kịch bản: PASS" in output
+    assert "[Issuer] G5 T0 cấu trúc: MALFORMED" in output
+    assert "[Phán quyết] G6: MALFORMED" in output
+    assert "[Đối chiếu] G8 kỳ vọng/thực tế: PASS" in output
+    assert "MessageHash" not in output
 
 
-def test_unexpected_decision_prints_only_failure_layer_and_scenario_result(capsys, monkeypatch):
+def test_unexpected_decision_marks_g8_failure_without_packet_details(capsys, monkeypatch):
     env = make_env()
 
     def reject_at_t4(packet, *, mode="live", trace=None):
@@ -123,13 +159,15 @@ def test_unexpected_decision_prints_only_failure_layer_and_scenario_result(capsy
 
     monkeypatch.setattr(env.issuer, "verify_packet", reject_at_t4)
     assert not report_result(env, 99, "unused title", {}, "SIGNATURE_VALID")
-    assert capsys.readouterr().out.strip() == (
-        "KS-99 FAIL | T0 PASS → T1 PASS → T1b PASS → T2 PASS → T3 PASS "
-        "→ T4 INTEGRITY_VIOLATION"
-    )
+    output = capsys.readouterr().out
+    assert "Trích log KS-99 — dừng tại T4" in output
+    assert "[Issuer] G5 T4 toàn vẹn: INTEGRITY_VIOLATION" in output
+    assert "[Phán quyết] G6: INTEGRITY_VIOLATION" in output
+    assert "[Đối chiếu] G8 kỳ vọng/thực tế: FAIL" in output
+    assert "SIGNATURE_VALID" not in output
 
 
-def test_verbose_option_keeps_ks_output_compact(capsys, monkeypatch):
+def test_verbose_option_keeps_ks_g_log_compact(capsys, monkeypatch):
     monkeypatch.setattr("sys.argv", ["run_scenarios.py", "--ks", "3"])
     assert main() == 0
     plain = capsys.readouterr().out
@@ -139,60 +177,42 @@ def test_verbose_option_keeps_ks_output_compact(capsys, monkeypatch):
     verbose = capsys.readouterr().out
 
     assert verbose == plain
-    assert "T4 INTEGRITY_VIOLATION" in verbose
-    assert all(token not in verbose for token in ("payload", "Amount", "SHA-256", "Signature"))
+    assert "[Issuer] G5 T4 toàn vẹn: INTEGRITY_VIOLATION" in verbose
+    assert all(token not in verbose for token in ("payload", "Amount", "SHA-256", "CertificateID"))
 
 
-def test_flow_cli_verbose_flag_keeps_flow_compact(capsys, monkeypatch):
+def test_flow_cli_verbose_flag_keeps_g_log_compact(capsys, monkeypatch):
     monkeypatch.setattr("sys.argv", ["run_scenarios.py", "--flow", "--verbose"])
     assert main() == 0
-    assert capsys.readouterr().out.strip() == (
-        "FLOW PASS | T0 PASS → T1 PASS → T1b PASS → T2 PASS → T3 PASS "
-        "→ T4 PASS → T5 PASS"
-    )
+    output = capsys.readouterr().out
+    assert "[Merchant] G2 tạo bản tin: PASS" in output
+    assert "[Proxy] G4 chuyển tiếp: PASS" in output
+    assert "[Issuer] G5 T5 chữ ký: PASS" in output
 
 
-def test_default_runner_prints_only_compact_scenario_and_check_results(capsys, monkeypatch):
+def test_default_runner_uses_g_log_for_flows_and_ks(capsys, monkeypatch):
     monkeypatch.setattr("sys.argv", ["run_scenarios.py"])
     assert main() == 0
     output = capsys.readouterr().out
     lines = output.splitlines()
+    stripped_lines = [line.strip() for line in lines]
 
-    assert lines[0] == (
-        "FLOW PASS | T0 PASS → T1 PASS → T1b PASS → T2 PASS → T3 PASS "
-        "→ T4 PASS → T5 PASS"
-    )
-    assert sum(line.startswith("KS-") for line in lines) == 12
-    for expected_result in (
-        "KS-02 PASS | T0 PASS → T1 PASS → T1b PASS → T2 PASS → T3 REPLAY_DETECTED",
-        "KS-05 PASS | T0 PASS → T1 PASS → T1b PASS → T2 TIMESTAMP_TOO_OLD",
-        "KS-07 PASS | T0 PASS → T1 PASS → T1b PASS → T2 PASS → T3 PASS "
-        "→ T4 PASS → T5 SIGNATURE_INVALID",
-        "KS-08 PASS | T0 PASS → T1 CERT_REVOKED",
-        "KS-11 PASS | T0 MALFORMED",
-        "KS-12 PASS | T0 PASS → T1 PASS → T1b SIGNER_NOT_AUTHORIZED",
-        "UNIT SERVICE_UNAVAILABLE PASS | T0 PASS → T1 PASS → T1b PASS → T2 PASS "
-        "→ T3 SERVICE_UNAVAILABLE",
-    ):
-        assert expected_result in lines
-    assert "END-TO-END PASS 12/12" in lines
-    assert "UNIT CHECKS PASS 6/6" in lines
-    assert lines[-1] == "OVERALL PASS"
-    error_codes = (
-        "CERT_NOT_FOUND", "CHAIN_INVALID", "CERT_NOT_YET_VALID", "CERT_EXPIRED",
-        "WEAK_EXPONENT", "SERVICE_UNAVAILABLE", "TIMESTAMP_TOO_OLD", "REPLAY_DETECTED",
-        "INTEGRITY_VIOLATION", "SIGNATURE_INVALID", "CERT_REVOKED", "SIGNER_NOT_AUTHORIZED",
-        "TIMESTAMP_IN_FUTURE", "DUPLICATE_MESSAGE", "KEY_TOO_WEAK", "CERT_POLICY_INVALID",
-    )
-    assert all(
-        "PASS" in line or "MALFORMED" in line or any(code in line for code in error_codes)
-        for line in lines
-    )
+    assert lines[0] == "Trích log FLOW — hoàn tất"
+    assert sum(line.startswith("Trích log KS-") for line in lines) == 12
+    assert "[Issuer] G5 T3 chống phát lại: REPLAY_DETECTED" in stripped_lines
+    assert "[Issuer] G5 T2 thời gian: TIMESTAMP_TOO_OLD" in stripped_lines
+    assert "[Issuer] G5 T5 chữ ký: SIGNATURE_INVALID" in stripped_lines
+    assert "[Issuer] G5 T1 chứng thư: CERT_REVOKED" in stripped_lines
+    assert "[Issuer] G5 T0 cấu trúc: MALFORMED" in stripped_lines
+    assert "[Issuer] G5 T1b danh tính: SIGNER_NOT_AUTHORIZED" in stripped_lines
+    assert "[Đối chiếu] G8 kỳ vọng/thực tế: PASS" in stripped_lines
+    assert "UNIT CHECKS PASS 6/6" in stripped_lines
+    assert stripped_lines[-1] == "OVERALL PASS"
     forbidden = (
-        "payload", "MessageHash", "SHA-256", "Signature", "CertificateID", "Timestamp=", "Nonce="
+        "payload", "MessageHash", "SHA-256", "Signature", "CertificateID", "Timestamp=", "Nonce=",
+        "Amount", "TX-2026",
     )
     assert all(token not in output for token in forbidden)
-
 
 def test_six_additional_decision_codes_pass():
     assert run_unit_checks()
@@ -349,7 +369,10 @@ def test_expired_crl_cache_fails_closed_when_ca_is_unavailable(capsys):
     env.clock.advance(CRL_TTL + dt.timedelta(seconds=1))
     packet_after_expiry = env.merchant.create_packet(message_id="CRL-CACHE-EXPIRED")
     assert report_result(env, 90, "CRL cache outage", packet_after_expiry, "SERVICE_UNAVAILABLE")
-    assert capsys.readouterr().out.strip() == "KS-90 PASS | T0 PASS → T1 SERVICE_UNAVAILABLE"
+    output = capsys.readouterr().out
+    assert "[Issuer] G5 T1 chứng thư: SERVICE_UNAVAILABLE" in output
+    assert "[Phán quyết] G6: SERVICE_UNAVAILABLE" in output
+    assert "[Đối chiếu] G8 kỳ vọng/thực tế: PASS" in output
 
 
 def test_replay_store_unavailable_fails_closed():
