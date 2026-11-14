@@ -1,6 +1,12 @@
 import concurrent.futures
 import datetime as dt
 import json
+import sys
+from pathlib import Path
+
+_ROOT = str(Path(__file__).resolve().parent.parent)
+if _ROOT not in sys.path:
+    sys.path.insert(0, _ROOT)
 
 import pytest
 from cryptography import x509

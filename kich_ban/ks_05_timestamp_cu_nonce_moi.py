@@ -1,3 +1,10 @@
+import sys
+from pathlib import Path
+
+_ROOT = str(Path(__file__).resolve().parent.parent)
+if _ROOT not in sys.path:
+    sys.path.insert(0, _ROOT)
+
 from datetime import timedelta
 
 from he_thong import Proxy
@@ -34,3 +41,9 @@ def chay(env, *, verbose: bool = False):
         advance_clock(-timedelta(hours=1))
         env.ca._crl = saved_ca_crl
         env.issuer._crl_cache = saved_issuer_crl_cache
+
+
+if __name__ == "__main__":
+    from run_scenarios import BASE_TIME, FrozenClock, create_environment
+    env = create_environment(clock=FrozenClock(BASE_TIME))
+    chay(env, verbose=True)

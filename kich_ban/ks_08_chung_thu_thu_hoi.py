@@ -1,3 +1,10 @@
+import sys
+from pathlib import Path
+
+_ROOT = str(Path(__file__).resolve().parent.parent)
+if _ROOT not in sys.path:
+    sys.path.insert(0, _ROOT)
+
 from datetime import timedelta
 
 from kich_ban.common import report_result
@@ -24,3 +31,9 @@ def chay(env, *, verbose: bool = False):
     finally:
         # Kịch bản độc lập: phục hồi trạng thái CA để không làm nhiễm KS-09.
         env.ca.unrevoke(env.merchant.certificate_id)
+
+
+if __name__ == "__main__":
+    from run_scenarios import BASE_TIME, FrozenClock, create_environment
+    env = create_environment(clock=FrozenClock(BASE_TIME))
+    chay(env, verbose=True)

@@ -1,4 +1,10 @@
 import copy
+import sys
+from pathlib import Path
+
+_ROOT = str(Path(__file__).resolve().parent.parent)
+if _ROOT not in sys.path:
+    sys.path.insert(0, _ROOT)
 
 from kich_ban.common import report_result
 from rsa_crypto import canonical_json_bytes, sign
@@ -25,3 +31,9 @@ def chay(env, *, verbose: bool = False):
         packet,
         KY_VONG,
     )
+
+
+if __name__ == "__main__":
+    from run_scenarios import BASE_TIME, FrozenClock, create_environment
+    env = create_environment(clock=FrozenClock(BASE_TIME))
+    chay(env, verbose=True)
