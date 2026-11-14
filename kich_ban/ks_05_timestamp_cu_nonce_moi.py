@@ -27,12 +27,6 @@ def chay(env, *, verbose: bool = False):
             TEN,
             packet,
             KY_VONG,
-            verbose=verbose,
-            original_packet=original_packet,
-            scenario_note=(
-                "Proxy giữ nguyên gói đã ký, chưa chuyển tới Issuer, rồi gửi sau 3600 giây; "
-                "nonce chưa từng được ghi trong kho."
-            ),
         )
     finally:
         # Roll back this isolated time jump because the full scenario suite

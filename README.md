@@ -22,11 +22,10 @@ Yêu cầu Python 3.10 trở lên.
 ```bash
 python -m venv .venv
 source .venv/bin/activate       # Windows: .venv\Scripts\activate
-python -m pip install -r requirements.txt
-python -m pip install -r requirements-dev.txt
+python -m pip install -r requirements.txt -r requirements-dev.txt
 ```
 
-Chạy toàn bộ 12 kịch bản và sáu kiểm tra đơn vị bổ sung, chạy riêng một kịch bản, xem mẫu luồng G1–G8 hoặc benchmark RSA:
+Chạy luồng hợp lệ, toàn bộ 12 kịch bản và sáu kiểm tra đơn vị bổ sung; chạy riêng một kịch bản hoặc benchmark RSA:
 
 ```bash
 python run_scenarios.py
@@ -36,7 +35,7 @@ python run_scenarios.py --flow
 python run_scenarios.py --bench
 ```
 
-Chạy mặc định sẽ in một mẫu luồng G1–G8 đầy đủ (payload, JSON chuẩn hóa UTF-8, SHA-256, chữ ký và trace T0–T5), sau đó mỗi kịch bản KS chỉ in mã quyết định cùng trạng thái đạt/không đạt. `--ks 3` chỉ in kết quả của KS-03; thêm `--verbose` để xem trace chi tiết riêng cho kịch bản đó. `--flow` chỉ chạy mẫu luồng đầy đủ. Payload không được mã hóa; chữ ký không che nội dung.
+Mọi chế độ chạy kịch bản (`mặc định`, `--ks`, `--flow`, và cả `--verbose`) chỉ in trạng thái PASS theo từng tầng đã qua, mã lỗi tại tầng dừng, cùng kết quả cuối của kịch bản. Không in payload, trường dữ liệu, giá trị/hash/chữ ký hoặc dữ liệu trung gian. `--verbose` được giữ để tương thích với lệnh cũ nhưng không bật đầu ra chi tiết. Payload trong nguyên mẫu không được mã hóa; chữ ký không che nội dung.
 
 Chạy kiểm thử tự động:
 

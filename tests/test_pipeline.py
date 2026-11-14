@@ -9,8 +9,9 @@ from cryptography.x509.oid import NameOID
 
 from ca_service import CRL_TTL
 from he_thong import FrozenClock, create_environment
+from kich_ban.common import format_layer_path, report_result
 from nonce_store import InMemoryReplayStore, NONCE_TTL_SECONDS
-from run_scenarios import BASE_TIME, load_scenarios, run_flow, run_unit_checks
+from run_scenarios import BASE_TIME, load_scenarios, main, run_flow, run_unit_checks
 
 
 def make_env():
@@ -49,75 +50,148 @@ def test_all_twelve_report_scenarios_pass():
     assert all(results)
 
 
-def test_ks05_delayed_packet_is_rejected_by_timestamp_and_restores_clock(capsys):
+def test_ks05_delayed_packet_is_rejected_at_t2_and_restores_clock(capsys):
     env = make_env()
     scenario = next(module for module in load_scenarios() if module.SO == 5)
 
     assert scenario.chay(env, verbose=True)
     assert env.clock.now() == BASE_TIME
-    output = capsys.readouterr().out
-    assert "Proxy giữ nguyên gói đã ký" in output
-    assert "Gói đưa vào Issuer: giữ nguyên như gói đã ký." in output
-    assert "TIMESTAMP_TOO_OLD" in output
+    assert capsys.readouterr().out.strip() == (
+        "KS-05 PASS | T0 PASS → T1 PASS → T1b PASS → T2 TIMESTAMP_TOO_OLD"
+    )
 
 
-def test_scenario_report_shows_data_representation_and_failure_stage(capsys):
+def test_scenario_report_is_compact_and_identifies_failure_layer(capsys):
     env = make_env()
     scenario = next(module for module in load_scenarios() if module.SO == 3)
 
     assert scenario.chay(env, verbose=True)
-    output = capsys.readouterr().out
+    output = capsys.readouterr().out.strip()
 
-    assert "Canonical JSON UTF-8" in output
-    assert "SHA-256(canonical JSON)" in output
-    assert "Signature RSA-PSS/SHA-256" in output
-    assert "payload.Amount: 150000 → 1500000" in output
-    assert "T4 SHA-256 comparison:" in output
-    assert "match=NO" in output
-    assert "T4 result: FAIL -> INTEGRITY_VIOLATION" in output
-    assert "T5" not in output
+    assert output == (
+        "KS-03 PASS | T0 PASS → T1 PASS → T1b PASS → T2 PASS → T3 PASS "
+        "→ T4 INTEGRITY_VIOLATION"
+    )
+    for forbidden in ("payload", "Amount", "SHA-256", "Signature", "CertificateID", "150000"):
+        assert forbidden not in output
 
 
-def test_compact_report_prints_only_the_scenario_result(capsys):
+def test_compact_report_includes_scenario_result_and_only_layer_statuses(capsys):
     env = make_env()
-    scenario = next(module for module in load_scenarios() if module.SO == 3)
+    scenario = next(module for module in load_scenarios() if module.SO == 1)
 
     assert scenario.chay(env)
     output = capsys.readouterr().out.strip()
-
-    assert output.startswith("KS-03 · Proxy sửa Amount")
-    assert "INTEGRITY_VIOLATION" in output
-    assert "ĐẠT" in output
-    assert "payload" not in output
-    assert "SHA-256" not in output
-    assert "T4" not in output
-    assert len(output.splitlines()) == 1
+    assert output == (
+        "KS-01 PASS | T0 PASS → T1 PASS → T1b PASS → T2 PASS → T3 PASS "
+        "→ T4 PASS → T5 PASS"
+    )
 
 
-def test_flow_demo_prints_full_transform_sample(capsys):
+def test_flow_demo_prints_only_layer_statuses(capsys):
     assert run_flow()
-    output = capsys.readouterr().out
-
-    assert "Payload JSON (dữ liệu có thể đọc)" in output
-    assert "Canonical JSON UTF-8" in output
-    assert "SHA-256(canonical JSON)" in output
-    assert "Signature RSA-PSS/SHA-256" in output
-    assert "T0 envelope fields:" in output
-    assert "T5 result: PASS" in output
-    assert "payload không bị mã hóa" in output
+    output = capsys.readouterr().out.strip()
+    assert output == (
+        "FLOW PASS | T0 PASS → T1 PASS → T1b PASS → T2 PASS → T3 PASS "
+        "→ T4 PASS → T5 PASS"
+    )
+    for forbidden in ("Payload", "MessageHash", "SHA-256", "Signature", "CertificateID"):
+        assert forbidden not in output
 
 
-def test_report_shows_missing_envelope_field_and_stops_at_t0(capsys):
+def test_report_stops_at_t0_for_missing_envelope_field(capsys):
     env = make_env()
     scenario = next(module for module in load_scenarios() if module.SO == 11)
 
     assert scenario.chay(env, verbose=True)
-    output = capsys.readouterr().out
+    assert capsys.readouterr().out.strip() == "KS-11 PASS | T0 MALFORMED"
 
-    assert "missing=[MessageHash]" in output
-    assert "T0 envelope result: missing=[MessageHash]" in output
-    assert "T1 inputs:" not in output
-    assert "Issuer quyết định: MALFORMED | Kịch bản: ĐẠT" in output
+
+def test_unexpected_decision_prints_only_failure_layer_and_scenario_result(capsys, monkeypatch):
+    env = make_env()
+
+    def reject_at_t4(packet, *, mode="live", trace=None):
+        trace.extend([
+            "T0 result: PASS",
+            "T1 certificate chain, validity, revocation and key policy: PASS",
+            "T1b result: PASS",
+            "T2 result: PASS",
+            "T3 result: PASS",
+            "T4 result: FAIL -> INTEGRITY_VIOLATION",
+        ])
+        return "INTEGRITY_VIOLATION"
+
+    monkeypatch.setattr(env.issuer, "verify_packet", reject_at_t4)
+    assert not report_result(env, 99, "unused title", {}, "SIGNATURE_VALID")
+    assert capsys.readouterr().out.strip() == (
+        "KS-99 FAIL | T0 PASS → T1 PASS → T1b PASS → T2 PASS → T3 PASS "
+        "→ T4 INTEGRITY_VIOLATION"
+    )
+
+
+def test_verbose_option_keeps_ks_output_compact(capsys, monkeypatch):
+    monkeypatch.setattr("sys.argv", ["run_scenarios.py", "--ks", "3"])
+    assert main() == 0
+    plain = capsys.readouterr().out
+
+    monkeypatch.setattr("sys.argv", ["run_scenarios.py", "--ks", "3", "--verbose"])
+    assert main() == 0
+    verbose = capsys.readouterr().out
+
+    assert verbose == plain
+    assert "T4 INTEGRITY_VIOLATION" in verbose
+    assert all(token not in verbose for token in ("payload", "Amount", "SHA-256", "Signature"))
+
+
+def test_flow_cli_verbose_flag_keeps_flow_compact(capsys, monkeypatch):
+    monkeypatch.setattr("sys.argv", ["run_scenarios.py", "--flow", "--verbose"])
+    assert main() == 0
+    assert capsys.readouterr().out.strip() == (
+        "FLOW PASS | T0 PASS → T1 PASS → T1b PASS → T2 PASS → T3 PASS "
+        "→ T4 PASS → T5 PASS"
+    )
+
+
+def test_default_runner_prints_only_compact_scenario_and_check_results(capsys, monkeypatch):
+    monkeypatch.setattr("sys.argv", ["run_scenarios.py"])
+    assert main() == 0
+    output = capsys.readouterr().out
+    lines = output.splitlines()
+
+    assert lines[0] == (
+        "FLOW PASS | T0 PASS → T1 PASS → T1b PASS → T2 PASS → T3 PASS "
+        "→ T4 PASS → T5 PASS"
+    )
+    assert sum(line.startswith("KS-") for line in lines) == 12
+    for expected_result in (
+        "KS-02 PASS | T0 PASS → T1 PASS → T1b PASS → T2 PASS → T3 REPLAY_DETECTED",
+        "KS-05 PASS | T0 PASS → T1 PASS → T1b PASS → T2 TIMESTAMP_TOO_OLD",
+        "KS-07 PASS | T0 PASS → T1 PASS → T1b PASS → T2 PASS → T3 PASS "
+        "→ T4 PASS → T5 SIGNATURE_INVALID",
+        "KS-08 PASS | T0 PASS → T1 CERT_REVOKED",
+        "KS-11 PASS | T0 MALFORMED",
+        "KS-12 PASS | T0 PASS → T1 PASS → T1b SIGNER_NOT_AUTHORIZED",
+        "UNIT SERVICE_UNAVAILABLE PASS | T0 PASS → T1 PASS → T1b PASS → T2 PASS "
+        "→ T3 SERVICE_UNAVAILABLE",
+    ):
+        assert expected_result in lines
+    assert "END-TO-END PASS 12/12" in lines
+    assert "UNIT CHECKS PASS 6/6" in lines
+    assert lines[-1] == "OVERALL PASS"
+    error_codes = (
+        "CERT_NOT_FOUND", "CHAIN_INVALID", "CERT_NOT_YET_VALID", "CERT_EXPIRED",
+        "WEAK_EXPONENT", "SERVICE_UNAVAILABLE", "TIMESTAMP_TOO_OLD", "REPLAY_DETECTED",
+        "INTEGRITY_VIOLATION", "SIGNATURE_INVALID", "CERT_REVOKED", "SIGNER_NOT_AUTHORIZED",
+        "TIMESTAMP_IN_FUTURE", "DUPLICATE_MESSAGE", "KEY_TOO_WEAK", "CERT_POLICY_INVALID",
+    )
+    assert all(
+        "PASS" in line or "MALFORMED" in line or any(code in line for code in error_codes)
+        for line in lines
+    )
+    forbidden = (
+        "payload", "MessageHash", "SHA-256", "Signature", "CertificateID", "Timestamp=", "Nonce="
+    )
+    assert all(token not in output for token in forbidden)
 
 
 def test_six_additional_decision_codes_pass():
@@ -130,7 +204,12 @@ def test_same_message_id_with_fresh_nonce_is_rejected_as_duplicate():
     second = env.merchant.create_packet(message_id="IDEMPOTENCY-001")
     assert first["payload"]["Nonce"] != second["payload"]["Nonce"]
     assert env.issuer.verify_packet(first) == "SIGNATURE_VALID"
-    assert env.issuer.verify_packet(second) == "DUPLICATE_MESSAGE"
+    trace = []
+    assert env.issuer.verify_packet(second, trace=trace) == "DUPLICATE_MESSAGE"
+    assert format_layer_path("DUPLICATE_MESSAGE", trace) == (
+        "T0 PASS → T1 PASS → T1b PASS → T2 PASS → T3 PASS → T4 PASS "
+        "→ T5 PASS → T3 COMMIT DUPLICATE_MESSAGE"
+    )
 
 
 def test_concurrent_same_message_id_with_distinct_nonces_has_one_success():
@@ -261,7 +340,7 @@ def test_demo_ca_renews_crl_when_next_update_is_reached():
     assert refreshed_crl.next_update_utc > initial_crl.next_update_utc
 
 
-def test_expired_crl_cache_fails_closed_when_ca_is_unavailable():
+def test_expired_crl_cache_fails_closed_when_ca_is_unavailable(capsys):
     env = make_env()
     packet = env.merchant.create_packet(message_id="CRL-CACHE-OUTAGE")
     assert env.issuer.verify_packet(packet) == "SIGNATURE_VALID"
@@ -269,7 +348,8 @@ def test_expired_crl_cache_fails_closed_when_ca_is_unavailable():
     env.ca.down = True
     env.clock.advance(CRL_TTL + dt.timedelta(seconds=1))
     packet_after_expiry = env.merchant.create_packet(message_id="CRL-CACHE-EXPIRED")
-    assert env.issuer.verify_packet(packet_after_expiry) == "SERVICE_UNAVAILABLE"
+    assert report_result(env, 90, "CRL cache outage", packet_after_expiry, "SERVICE_UNAVAILABLE")
+    assert capsys.readouterr().out.strip() == "KS-90 PASS | T0 PASS → T1 SERVICE_UNAVAILABLE"
 
 
 def test_replay_store_unavailable_fails_closed():

@@ -17,7 +17,4 @@ def chay(env, *, verbose: bool = False):
         TEN,
         tampered,
         KY_VONG,
-        verbose=verbose,
-        original_packet=packet,
-        scenario_note="Proxy đổi một ký tự trong CardToken sau khi ký; MessageHash và Signature vẫn là giá trị cũ.",
     )

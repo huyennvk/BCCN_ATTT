@@ -11,7 +11,7 @@ TANG = "T3"
 def chay(env, *, verbose: bool = False):
     packet = env.data.get("ks01_packet")
     if packet is None:
-        chay_ks01(env, verbose=verbose)
+        chay_ks01(env)
         packet = env.data["ks01_packet"]
     return report_result(
         env,
@@ -19,7 +19,4 @@ def chay(env, *, verbose: bool = False):
         TEN,
         packet,
         KY_VONG,
-        verbose=verbose,
-        original_packet=packet,
-        scenario_note="Phát lại đúng gói KS-01: MessageID và Nonce vẫn giữ nguyên, không sửa payload hay chữ ký.",
     )

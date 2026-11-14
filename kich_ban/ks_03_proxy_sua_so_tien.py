@@ -17,7 +17,4 @@ def chay(env, *, verbose: bool = False):
         TEN,
         tampered,
         KY_VONG,
-        verbose=verbose,
-        original_packet=packet,
-        scenario_note="Proxy đổi Amount sau khi ký nhưng không tính lại MessageHash hoặc Signature.",
     )
