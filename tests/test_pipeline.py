@@ -49,6 +49,18 @@ def test_all_twelve_report_scenarios_pass():
     assert all(results)
 
 
+def test_ks05_delayed_packet_is_rejected_by_timestamp_and_restores_clock(capsys):
+    env = make_env()
+    scenario = next(module for module in load_scenarios() if module.SO == 5)
+
+    assert scenario.chay(env, verbose=True)
+    assert env.clock.now() == BASE_TIME
+    output = capsys.readouterr().out
+    assert "Proxy giữ nguyên gói đã ký" in output
+    assert "Gói đưa vào Issuer: giữ nguyên như gói đã ký." in output
+    assert "TIMESTAMP_TOO_OLD" in output
+
+
 def test_scenario_report_shows_data_representation_and_failure_stage(capsys):
     env = make_env()
     scenario = next(module for module in load_scenarios() if module.SO == 3)
@@ -258,6 +270,19 @@ def test_expired_crl_cache_fails_closed_when_ca_is_unavailable():
     env.clock.advance(CRL_TTL + dt.timedelta(seconds=1))
     packet_after_expiry = env.merchant.create_packet(message_id="CRL-CACHE-EXPIRED")
     assert env.issuer.verify_packet(packet_after_expiry) == "SERVICE_UNAVAILABLE"
+
+
+def test_replay_store_unavailable_fails_closed():
+    env = make_env()
+    packet = env.merchant.create_packet(message_id="REPLAY-STORE-OUTAGE")
+    trace = []
+    env.issuer.replay_store.down = True
+    try:
+        assert env.issuer.verify_packet(packet, trace=trace) == "SERVICE_UNAVAILABLE"
+    finally:
+        env.issuer.replay_store.down = False
+
+    assert any("nonce store unavailable" in step for step in trace)
 
 
 def test_oversized_signature_is_malformed_before_crypto_processing():

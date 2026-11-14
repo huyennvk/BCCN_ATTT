@@ -5,7 +5,7 @@ from kich_ban.common import report_result
 
 SO = 1
 TEN = "Ký và gửi bản tin chuẩn"
-NHOM = "Bình thường"
+NHOM = "Luồng hợp lệ và hậu kiểm"
 KY_VONG = "SIGNATURE_VALID"
 TANG = "T0-T5"
 

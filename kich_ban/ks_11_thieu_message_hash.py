@@ -2,7 +2,7 @@ from kich_ban.common import report_result
 
 SO = 11
 TEN = "Bỏ trường MessageHash khỏi envelope"
-NHOM = "Cấu trúc"
+NHOM = "Toàn vẹn và cấu trúc"
 KY_VONG = "MALFORMED"
 TANG = "T0"
 

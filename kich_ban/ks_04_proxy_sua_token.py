@@ -3,7 +3,7 @@ from he_thong import Proxy
 
 SO = 4
 TEN = "Proxy sửa một ký tự trong CardToken"
-NHOM = "Toàn vẹn"
+NHOM = "Toàn vẹn và cấu trúc"
 KY_VONG = "INTEGRITY_VIOLATION"
 TANG = "T4"
 
