@@ -1,3 +1,10 @@
+import sys
+from pathlib import Path
+
+_ROOT = str(Path(__file__).resolve().parent.parent)
+if _ROOT not in sys.path:
+    sys.path.insert(0, _ROOT)
+
 from he_thong import Proxy
 from kich_ban.common import report_result
 from kich_ban.ks_01_ban_tin_chuan import chay as chay_ks01
@@ -26,3 +33,9 @@ def chay(env, *, verbose: bool = False):
         g3_action="dùng lại chữ ký đã tạo",
         g4_action="chuyển tiếp lại",
     )
+
+
+if __name__ == "__main__":
+    from run_scenarios import BASE_TIME, FrozenClock, create_environment
+    env = create_environment(clock=FrozenClock(BASE_TIME))
+    chay(env, verbose=True)

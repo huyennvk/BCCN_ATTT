@@ -1,5 +1,12 @@
 from __future__ import annotations
 
+import sys
+from pathlib import Path
+
+_ROOT = str(Path(__file__).resolve().parent.parent)
+if _ROOT not in sys.path:
+    sys.path.insert(0, _ROOT)
+
 from typing import Any
 
 from he_thong import Environment
@@ -172,3 +179,8 @@ def report_result(
         g3_action=g3_action,
         g4_action=g4_action,
     )
+
+
+if __name__ == "__main__":
+    from run_scenarios import main
+    raise SystemExit(main())

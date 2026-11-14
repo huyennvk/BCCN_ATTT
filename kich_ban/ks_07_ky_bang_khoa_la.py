@@ -1,4 +1,10 @@
 import copy
+import sys
+from pathlib import Path
+
+_ROOT = str(Path(__file__).resolve().parent.parent)
+if _ROOT not in sys.path:
+    sys.path.insert(0, _ROOT)
 
 from he_thong import Proxy
 from kich_ban.common import report_result
@@ -30,3 +36,9 @@ def chay(env, *, verbose: bool = False):
         g3_actor="ATTACK-01",
         g3_action="ký theo kịch bản",
     )
+
+
+if __name__ == "__main__":
+    from run_scenarios import BASE_TIME, FrozenClock, create_environment
+    env = create_environment(clock=FrozenClock(BASE_TIME))
+    chay(env, verbose=True)
