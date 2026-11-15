@@ -15,7 +15,7 @@ KY_VONG = "INTEGRITY_VIOLATION"
 TANG = "T4"
 
 
-def chay(env, *, verbose: bool = False, detail: bool = False):
+def chay(env, *, verbose: bool = False):
     packet = env.merchant.create_packet(message_id="TX-2026-0004", card_token="tok_9f2e77ab")
     tampered = Proxy.modify(packet, "CardToken", "tok_9f2e77ac")
     return report_result(
@@ -28,12 +28,10 @@ def chay(env, *, verbose: bool = False, detail: bool = False):
         g4_action="tác động theo kịch bản",
         event_note="Tấn công Proxy sửa gói (sửa token thẻ)",
         verbose=verbose,
-        detail=detail,
-        original_packet=packet,
     )
 
 
 if __name__ == "__main__":
     from run_scenarios import BASE_TIME, FrozenClock, create_environment
     env = create_environment(clock=FrozenClock(BASE_TIME))
-    chay(env, verbose=True, detail=True)
+    chay(env, verbose=True)

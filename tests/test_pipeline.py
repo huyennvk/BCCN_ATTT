@@ -1,6 +1,7 @@
 import concurrent.futures
 import datetime as dt
 import json
+import subprocess
 import sys
 from pathlib import Path
 
@@ -220,6 +221,41 @@ def test_unexpected_decision_marks_g8_failure_without_packet_details(capsys, mon
     assert "[Phán quyết] G6: INTEGRITY_VIOLATION" in output
     assert "[Đối chiếu] G8 kỳ vọng/thực tế: FAIL" in output
     assert "SIGNATURE_VALID" not in output
+
+
+@pytest.mark.parametrize(
+    ("number", "filename"),
+    [
+        (6, "ks_06_proxy_sua_so_tien.py"),
+        (7, "ks_07_proxy_sua_token.py"),
+        (8, "ks_08_thieu_message_hash.py"),
+    ],
+)
+def test_direct_integrity_scenarios_keep_logs_redacted(number, filename):
+    repo_root = Path(__file__).resolve().parents[1]
+    script = repo_root / "kich_ban" / filename
+    result = subprocess.run(
+        [sys.executable, str(script)],
+        cwd=repo_root,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+    output = result.stdout
+    assert f"Trích log KS-{number:02d}" in output
+    assert "[Phán quyết] G6:" in output
+    for forbidden in (
+        "Payload JSON",
+        "Canonical JSON",
+        "SHA-256",
+        "Signature RSA-PSS",
+        "CertificateID =",
+        "tok_",
+        "Nonce=",
+        "Timestamp=",
+    ):
+        assert forbidden not in output
 
 
 def test_verbose_option_keeps_ks_g_log_compact(capsys, monkeypatch):
