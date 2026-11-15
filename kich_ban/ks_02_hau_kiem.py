@@ -7,7 +7,7 @@ if _ROOT not in sys.path:
 
 from kich_ban.common import report_result
 
-SO = 9
+SO = 2
 TEN = "Hậu kiểm độc lập bản tin KS-01 đã lưu"
 NHOM = "Luồng hợp lệ và hậu kiểm"
 KY_VONG = "SIGNATURE_VALID"

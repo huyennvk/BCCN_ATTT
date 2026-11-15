@@ -56,14 +56,44 @@ def test_all_twelve_report_scenarios_pass():
     assert all(results)
 
 
-def test_ks05_delayed_packet_is_rejected_at_t2_and_restores_clock(capsys):
+def test_scenario_numbers_are_grouped_contiguously():
+    assert [(module.SO, module.NHOM) for module in load_scenarios()] == [
+        (1, "Luồng hợp lệ và hậu kiểm"),
+        (2, "Luồng hợp lệ và hậu kiểm"),
+        (3, "Thời gian và chống phát lại"),
+        (4, "Thời gian và chống phát lại"),
+        (5, "Thời gian và chống phát lại"),
+        (6, "Toàn vẹn và cấu trúc"),
+        (7, "Toàn vẹn và cấu trúc"),
+        (8, "Toàn vẹn và cấu trúc"),
+        (9, "Chữ ký và chính sách khóa"),
+        (10, "Chữ ký và chính sách khóa"),
+        (11, "Chứng thư và quyền ký"),
+        (12, "Chứng thư và quyền ký"),
+    ]
+
+
+@pytest.mark.parametrize(
+    ("number", "expected"),
+    [(2, "SIGNATURE_VALID"), (3, "REPLAY_DETECTED")],
+)
+def test_single_grouped_ks_cli_seeds_ks01_fixture(number, expected, capsys, monkeypatch):
+    monkeypatch.setattr("sys.argv", ["run_scenarios.py", "--ks", str(number)])
+
+    assert main() == 0
+    output = capsys.readouterr().out
+    assert f"Trích log KS-{number:02d}" in output
+    assert f"[Phán quyết] G6: {expected}" in output
+
+
+def test_ks04_delayed_packet_is_rejected_at_t2_and_restores_clock(capsys):
     env = make_env()
-    scenario = next(module for module in load_scenarios() if module.SO == 5)
+    scenario = next(module for module in load_scenarios() if module.SO == 4)
 
     assert scenario.chay(env, verbose=True)
     assert env.clock.now() == BASE_TIME
     output = capsys.readouterr().out
-    assert "Trích log KS-05 — dừng tại T2" in output
+    assert "Trích log KS-04 — dừng tại T2" in output
     assert "[Merchant] G2 tạo bản tin: PASS" in output
     assert "[Merchant] G3 chuẩn hóa và ký: PASS" in output
     assert "[Proxy] G4 chuyển tiếp theo kịch bản: PASS" in output
@@ -76,13 +106,13 @@ def test_ks05_delayed_packet_is_rejected_at_t2_and_restores_clock(capsys):
 
 def test_scenario_report_logs_g_steps_and_stops_at_failure_layer(capsys):
     env = make_env()
-    scenario = next(module for module in load_scenarios() if module.SO == 3)
+    scenario = next(module for module in load_scenarios() if module.SO == 6)
 
     assert scenario.chay(env, verbose=True)
     output = capsys.readouterr().out
 
-    assert "Trích log KS-03 — dừng tại T4" in output
-    assert "KS-03 · NHÓM TOÀN VẸN VÀ CẤU TRÚC" in output
+    assert "Trích log KS-06 — dừng tại T4" in output
+    assert "KS-06 · NHÓM TOÀN VẸN VÀ CẤU TRÚC" in output
     assert "[Merchant] G2 tạo bản tin: PASS" in output
     assert "[Merchant] G3 chuẩn hóa và ký: PASS" in output
     assert "[Proxy] G4 tác động theo kịch bản: PASS" in output
@@ -100,8 +130,8 @@ def test_scenario_report_logs_g_steps_and_stops_at_failure_layer(capsys):
         assert forbidden not in output
 
 
-def test_ks06_logs_merchant_creation_and_proxy_forwarding(capsys, monkeypatch):
-    monkeypatch.setattr("sys.argv", ["run_scenarios.py", "--ks", "6"])
+def test_ks05_logs_merchant_creation_and_proxy_forwarding(capsys, monkeypatch):
+    monkeypatch.setattr("sys.argv", ["run_scenarios.py", "--ks", "5"])
     assert main() == 0
     output = capsys.readouterr().out
     assert "[Merchant] G2 tạo bản tin: PASS" in output
@@ -143,11 +173,11 @@ def test_flow_log_includes_g_steps_and_nested_t_layers(capsys):
 
 def test_report_stops_at_t0_for_missing_envelope_field(capsys):
     env = make_env()
-    scenario = next(module for module in load_scenarios() if module.SO == 11)
+    scenario = next(module for module in load_scenarios() if module.SO == 8)
 
     assert scenario.chay(env, verbose=True)
     output = capsys.readouterr().out
-    assert "Trích log KS-11 — dừng tại T0" in output
+    assert "Trích log KS-08 — dừng tại T0" in output
     assert "[Proxy] G4 tác động theo kịch bản: PASS" in output
     assert "[Issuer] G5 T0 cấu trúc: MALFORMED" in output
     assert "[Phán quyết] G6: MALFORMED" in output
@@ -180,11 +210,11 @@ def test_unexpected_decision_marks_g8_failure_without_packet_details(capsys, mon
 
 
 def test_verbose_option_keeps_ks_g_log_compact(capsys, monkeypatch):
-    monkeypatch.setattr("sys.argv", ["run_scenarios.py", "--ks", "3"])
+    monkeypatch.setattr("sys.argv", ["run_scenarios.py", "--ks", "6"])
     assert main() == 0
     plain = capsys.readouterr().out
 
-    monkeypatch.setattr("sys.argv", ["run_scenarios.py", "--ks", "3", "--verbose"])
+    monkeypatch.setattr("sys.argv", ["run_scenarios.py", "--ks", "6", "--verbose"])
     assert main() == 0
     verbose = capsys.readouterr().out
 
@@ -209,10 +239,15 @@ def test_default_runner_prints_compact_results_and_event_notes(capsys, monkeypat
     lines = output.splitlines()
 
     assert lines[0] == "TÓM TẮT TOÀN BỘ"
-    assert sum(line.startswith("KS-") for line in lines) == 12
+    scenario_rows = [line for line in lines if line.startswith("KS-")]
+    assert len(scenario_rows) == 12
+    assert [line.split(" | ", 1)[0] for line in scenario_rows] == [
+        "KS-%02d" % number for number in range(1, 13)
+    ]
     assert sum(line.startswith("NGOÀI LỀ-") for line in lines) == 6
     assert "KS-01 | PASS | SIGNATURE_VALID" in lines
-    assert "KS-02 | PASS | REPLAY_DETECTED | Tấn công phát lại" in lines
+    assert "KS-02 | PASS | SIGNATURE_VALID" in lines
+    assert "KS-03 | PASS | REPLAY_DETECTED | Tấn công phát lại" in lines
     assert any("Tấn công Proxy: giữ nguyên gói rồi chuyển tiếp trễ" in line for line in lines)
     assert any("ATTACK-01 ký thay MERCH-01" in line for line in lines)
     assert any("Merchant tạo bản tin dùng lại nonce (không phải Proxy)" in line for line in lines)

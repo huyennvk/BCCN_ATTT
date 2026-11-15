@@ -8,16 +8,16 @@ if _ROOT not in sys.path:
 from kich_ban.common import report_result
 from he_thong import Proxy
 
-SO = 3
-TEN = "Proxy sửa Amount 150000 thành 1500000"
+SO = 7
+TEN = "Proxy sửa một ký tự trong CardToken"
 NHOM = "Toàn vẹn và cấu trúc"
 KY_VONG = "INTEGRITY_VIOLATION"
 TANG = "T4"
 
 
 def chay(env, *, verbose: bool = False, detail: bool = False):
-    packet = env.merchant.create_packet(message_id="TX-2026-0003", amount=150_000)
-    tampered = Proxy.modify(packet, "Amount", 1_500_000)
+    packet = env.merchant.create_packet(message_id="TX-2026-0004", card_token="tok_9f2e77ab")
+    tampered = Proxy.modify(packet, "CardToken", "tok_9f2e77ac")
     return report_result(
         env,
         SO,
@@ -26,13 +26,14 @@ def chay(env, *, verbose: bool = False, detail: bool = False):
         KY_VONG,
         group=NHOM,
         g4_action="tác động theo kịch bản",
-        event_note="Tấn công Proxy sửa gói (sửa số tiền)" if not detail else "Tấn công Proxy sửa gói: sửa số tiền Amount 150000 thành 1500000",
-        original_packet=packet,
+        event_note="Tấn công Proxy sửa gói (sửa token thẻ)",
+        verbose=verbose,
         detail=detail,
+        original_packet=packet,
     )
 
 
 if __name__ == "__main__":
     from run_scenarios import BASE_TIME, FrozenClock, create_environment
     env = create_environment(clock=FrozenClock(BASE_TIME))
-    chay(env, detail=True)
+    chay(env, verbose=True, detail=True)

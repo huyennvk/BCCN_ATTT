@@ -10,7 +10,7 @@ from datetime import timedelta
 from he_thong import Proxy
 from kich_ban.common import report_result
 
-SO = 8
+SO = 11
 TEN = "Ký bản tin bằng chứng thư Merchant đã bị thu hồi"
 NHOM = "Chứng thư và quyền ký"
 KY_VONG = "CERT_REVOKED"
@@ -33,7 +33,7 @@ def chay(env, *, verbose: bool = False):
             event_note="Thử gửi bằng chứng thư đã thu hồi",
         )
     finally:
-        # Kịch bản độc lập: phục hồi trạng thái CA để không làm nhiễm KS-09.
+        # Kịch bản độc lập: phục hồi trạng thái CA sau khi kiểm tra chứng thư thu hồi.
         env.ca.unrevoke(env.merchant.certificate_id)
 
 

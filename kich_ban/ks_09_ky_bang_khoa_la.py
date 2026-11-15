@@ -10,7 +10,7 @@ from he_thong import Proxy
 from kich_ban.common import report_result
 from rsa_crypto import canonical_json_bytes, sign
 
-SO = 7
+SO = 9
 TEN = "Ký bằng khóa lạ nhưng khai báo chứng thư Merchant"
 NHOM = "Chữ ký và chính sách khóa"
 KY_VONG = "SIGNATURE_INVALID"
