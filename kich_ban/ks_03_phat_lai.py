@@ -1,3 +1,5 @@
+import contextlib
+import io
 import sys
 from pathlib import Path
 
@@ -19,7 +21,10 @@ TANG = "T3"
 def chay(env, *, verbose: bool = False):
     packet = env.data.get("ks01_packet")
     if packet is None:
-        chay_ks01(env)
+        # Tạo giao dịch hợp lệ trước đó để có đúng bản tin cần phát lại,
+        # nhưng không trộn log của KS-01 vào log của KS-03 khi chạy độc lập.
+        with contextlib.redirect_stdout(io.StringIO()):
+            chay_ks01(env)
         packet = env.data["ks01_packet"]
     packet = Proxy.forward(packet)
     return report_result(

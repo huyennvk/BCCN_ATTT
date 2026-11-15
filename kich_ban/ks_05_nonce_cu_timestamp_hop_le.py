@@ -1,3 +1,5 @@
+import contextlib
+import io
 import sys
 from pathlib import Path
 
@@ -21,7 +23,9 @@ def chay(env, *, verbose: bool = False):
     base = env.data.get("ks01_packet")
     if base is None:
         from kich_ban.ks_01_ban_tin_chuan import chay as chay_ks01
-        chay_ks01(env)
+        # Chuẩn bị nonce đã được tiêu thụ trước đó, nhưng chỉ in log của KS-05.
+        with contextlib.redirect_stdout(io.StringIO()):
+            chay_ks01(env)
         base = env.data["ks01_packet"]
     packet = env.merchant.create_packet(
         message_id="TX-2026-0006",
