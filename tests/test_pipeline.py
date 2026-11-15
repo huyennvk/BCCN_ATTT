@@ -86,6 +86,19 @@ def test_single_grouped_ks_cli_seeds_ks01_fixture(number, expected, capsys, monk
     assert f"[Phán quyết] G6: {expected}" in output
 
 
+@pytest.mark.parametrize("number", [2, 3, 5])
+def test_ks01_fixture_setup_does_not_print_a_second_scenario_log(number, capsys):
+    env = make_env()
+    scenario = next(module for module in load_scenarios() if module.SO == number)
+
+    assert scenario.chay(env, verbose=True)
+    output = capsys.readouterr().out
+
+    assert output.count("Trích log KS-") == 1
+    assert f"Trích log KS-{number:02d}" in output
+    assert "Trích log KS-01" not in output
+
+
 def test_ks04_delayed_packet_is_rejected_at_t2_and_restores_clock(capsys):
     env = make_env()
     scenario = next(module for module in load_scenarios() if module.SO == 4)
