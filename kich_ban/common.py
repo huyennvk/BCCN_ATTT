@@ -9,7 +9,7 @@ if _ROOT not in sys.path:
 
 from typing import Any
 
-from he_thong import Environment
+from he_thong import Environment, format_timestamp
 
 _LAYER_ORDER = ("T0", "T1", "T1b", "T2", "T3", "T4", "T5")
 _LAYER_LABELS = {
@@ -47,6 +47,11 @@ _ERROR_LAYER = {
     "INTEGRITY_VIOLATION": "T4",
     "SIGNATURE_INVALID": "T5",
 }
+
+
+def format_simulation_time(env: Environment) -> str:
+    """Return the simulated event time as a UTC timestamp without packet data."""
+    return format_timestamp(env.clock.now())
 
 
 def _failure_layer(actual: str, trace: list[str]) -> str:
@@ -120,8 +125,9 @@ def print_flow_log(
     g3_actor: str = "Merchant",
     g3_action: str = "chuẩn hóa và ký",
     g4_action: str | None = "chuyển tiếp",
+    event_note: str | None = None,
 ) -> bool:
-    """Print the G-stage flow with Issuer's T-layer results, without packet data."""
+    """Print the G-stage flow without packet data; event notes contain action/time only."""
     ok = actual == expected
     path = format_layer_path(actual, trace)
     last_event = path.split(" → ")[-1]
@@ -142,6 +148,8 @@ def print_flow_log(
         print("[Proxy] G4 bỏ qua trong hậu kiểm bản tin đã lưu")
     else:
         print("[Proxy] G4 %s: PASS" % g4_action)
+    if event_note:
+        print("[Mốc sự kiện UTC] %s" % event_note)
     print("[Issuer] G5 xác minh:")
     for event in path.split(" → "):
         _log_layer_event(event)
@@ -164,6 +172,7 @@ def report_result(
     g3_actor: str = "Merchant",
     g3_action: str = "chuẩn hóa và ký",
     g4_action: str | None = "chuyển tiếp",
+    event_note: str | None = None,
 ) -> bool:
     trace: list[str] = []
     actual = env.issuer.verify_packet(packet, mode=mode, trace=trace)
@@ -178,6 +187,7 @@ def report_result(
         g3_actor=g3_actor,
         g3_action=g3_action,
         g4_action=g4_action,
+        event_note=event_note,
     )
 
 

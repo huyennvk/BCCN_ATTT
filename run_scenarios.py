@@ -34,8 +34,12 @@ def load_scenarios() -> list[Any]:
     return sorted(modules, key=lambda module: module.SO)
 
 
-def run_unit_checks() -> bool:
-    """Run the six additional decision checks and print only layers/statuses."""
+def run_unit_checks(*, detailed: bool = True) -> bool:
+    """Run the six additional decision-code checks.
+
+    The CLI full-suite mode uses compact rows; detailed mode is retained for
+    direct diagnostic runs and prints only safe layer/status information.
+    """
     env = create_environment(clock=FrozenClock(BASE_TIME))
     checks: list[tuple[str, str, list[str]]] = []
 
@@ -93,15 +97,27 @@ def run_unit_checks() -> bool:
         env.issuer.replay_store.down = False
 
     all_ok = True
-    for expected, actual, trace in checks:
+    for index, (expected, actual, trace) in enumerate(checks, start=1):
         ok = expected == actual
         all_ok = all_ok and ok
-        print(
-            "UNIT %s %s | %s"
-            % (expected, "PASS" if ok else "FAIL", format_layer_path(actual, trace))
-        )
+        if detailed:
+            print(
+                "UNIT %s %s | %s"
+                % (expected, "PASS" if ok else "FAIL", format_layer_path(actual, trace))
+            )
+        elif ok:
+            print("NGOÀI LỀ-%02d | PASS | %s" % (index, expected))
+        else:
+            print(
+                "NGOÀI LỀ-%02d | FAIL | expected=%s actual=%s"
+                % (index, expected, actual)
+            )
     passed_count = sum(expected == actual for expected, actual, _ in checks)
-    print("UNIT CHECKS %s %d/%d" % ("PASS" if all_ok else "FAIL", passed_count, len(checks)))
+    summary_label = "UNIT CHECKS" if detailed else "NGOÀI LỀ"
+    print(
+        "%s %s %d/%d"
+        % (summary_label, "PASS" if all_ok else "FAIL", passed_count, len(checks))
+    )
     return all_ok
 
 
@@ -188,6 +204,27 @@ def run_benchmark(iterations: int = 300) -> bool:
     return True
 
 
+def _run_scenario_quietly(module: Any, env: Any) -> tuple[bool, str, str | None]:
+    """Run a scenario while collecting its safe G-log for the full-run summary."""
+    captured = io.StringIO()
+    with contextlib.redirect_stdout(captured):
+        success = bool(module.chay(env))
+
+    decision_prefix = "[Phán quyết] G6: "
+    event_prefix = "[Mốc sự kiện UTC] "
+    decision = next(
+        (line[len(decision_prefix):] for line in captured.getvalue().splitlines()
+         if line.startswith(decision_prefix)),
+        "UNKNOWN",
+    )
+    event_note = next(
+        (line[len(event_prefix):] for line in captured.getvalue().splitlines()
+         if line.startswith(event_prefix)),
+        None,
+    )
+    return success and decision != "UNKNOWN", decision, event_note
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--ks", type=int, help="run one end-to-end scenario, 1..12")
@@ -197,13 +234,13 @@ def main() -> int:
     parser.add_argument("--bench", action="store_true", help="benchmark RSA primitives")
     parser.add_argument(
         "--verbose", action="store_true",
-        help="accepted for compatibility; no packet values or detailed traces are printed",
+        help="kept for compatibility; does not expand the full-run summary or expose packet data",
     )
     parser.add_argument(
         "--no-unit", action="store_true", help="skip six unit-level checks in full run"
     )
     args = parser.parse_args()
-    # Deliberately do not expand --verbose into packet values or internal trace data.
+    # --verbose does not expand the full-suite summary; --ks and --flow remain redacted G-logs.
 
     if args.flow:
         return 0 if run_flow() else 1
@@ -224,17 +261,38 @@ def main() -> int:
                 scenarios[0].chay(env)
         return 0 if chosen.chay(env) else 1
 
-    flow_ok = run_flow()
     env = create_environment(clock=FrozenClock(BASE_TIME))
-    results = [module.chay(env) for module in scenarios]
-    end_to_end_ok = all(results)
+    print("TÓM TẮT TOÀN BỘ — thời gian hiển thị là đồng hồ mô phỏng UTC")
+    print("KỊCH BẢN KS")
+    scenario_results: list[bool] = []
+    for module in scenarios:
+        ok, actual, event_note = _run_scenario_quietly(module, env)
+        expected = module.KY_VONG
+        ok = ok and actual == expected
+        scenario_results.append(ok)
+        row = "KS-%02d | %s | %s" % (
+            module.SO,
+            "PASS" if ok else "FAIL",
+            actual,
+        )
+        if not ok:
+            row += " | expected=%s" % expected
+        if event_note:
+            row += " | %s" % event_note
+        print(row)
+
+    end_to_end_ok = all(scenario_results)
     print(
-        "END-TO-END %s %d/%d"
-        % ("PASS" if end_to_end_ok else "FAIL", sum(results), len(results))
+        "KS TỔNG %s %d/%d"
+        % ("PASS" if end_to_end_ok else "FAIL", sum(scenario_results), len(scenario_results))
     )
 
-    unit_ok = True if args.no_unit else run_unit_checks()
-    overall_ok = flow_ok and end_to_end_ok and unit_ok
+    if args.no_unit:
+        unit_ok = True
+        print("NGOÀI LỀ | SKIP (--no-unit)")
+    else:
+        unit_ok = run_unit_checks(detailed=False)
+    overall_ok = end_to_end_ok and unit_ok
     print("OVERALL %s" % ("PASS" if overall_ok else "FAIL"))
     return 0 if overall_ok else 1
 

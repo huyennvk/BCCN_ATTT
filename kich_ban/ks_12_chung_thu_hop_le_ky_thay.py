@@ -6,7 +6,7 @@ if _ROOT not in sys.path:
     sys.path.insert(0, _ROOT)
 
 from he_thong import Proxy
-from kich_ban.common import report_result
+from kich_ban.common import format_simulation_time, report_result
 
 SO = 12
 TEN = "Chứng thư hợp lệ của ATTACK-01 ký thay MERCH-01"
@@ -22,6 +22,7 @@ def chay(env, *, verbose: bool = False):
         merchant_id="MERCH-01",
     )
     packet = env.attacker.sign_payload(payload)
+    attack_time = format_simulation_time(env)
     packet = Proxy.forward(packet)
     return report_result(
         env,
@@ -31,6 +32,7 @@ def chay(env, *, verbose: bool = False):
         KY_VONG,
         group=NHOM,
         g3_actor="ATTACK-01",
+        event_note="ATTACK-01 ký thay MERCH-01 lúc %s" % attack_time,
     )
 
 
