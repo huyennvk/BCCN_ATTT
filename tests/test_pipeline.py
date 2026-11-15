@@ -68,11 +68,8 @@ def test_ks05_delayed_packet_is_rejected_at_t2_and_restores_clock(capsys):
     assert "[Merchant] G3 chuẩn hóa và ký: PASS" in output
     assert "[Proxy] G4 chuyển tiếp theo kịch bản: PASS" in output
     assert "[Issuer] G5 T2 thời gian: TIMESTAMP_TOO_OLD" in output
-    delayed_event = (
-        "[Mốc sự kiện UTC] Tấn công Proxy (giữ nguyên gói): giữ từ "
-        "2026-09-24T08:00:00Z; chuyển tiếp tới Issuer lúc 2026-09-24T09:00:00Z"
-    )
-    assert delayed_event in output
+    assert "[Sự kiện] Tấn công Proxy: giữ nguyên gói rồi chuyển tiếp trễ" in output
+    assert "2026-09-24T" not in output
     assert "[Phán quyết] G6: TIMESTAMP_TOO_OLD" in output
     assert "[Đối chiếu] G8 kỳ vọng/thực tế: PASS" in output
 
@@ -89,7 +86,8 @@ def test_scenario_report_logs_g_steps_and_stops_at_failure_layer(capsys):
     assert "[Merchant] G2 tạo bản tin: PASS" in output
     assert "[Merchant] G3 chuẩn hóa và ký: PASS" in output
     assert "[Proxy] G4 tác động theo kịch bản: PASS" in output
-    assert "[Mốc sự kiện UTC] Tấn công Proxy sửa gói lúc 2026-09-24T08:00:00Z" in output
+    assert "[Sự kiện] Tấn công Proxy sửa gói" in output
+    assert "2026-09-24T" not in output
     assert "[Issuer] G5 T0 cấu trúc: PASS" in output
     assert "[Issuer] G5 T1 chứng thư: PASS" in output
     assert "[Issuer] G5 T1b danh tính: PASS" in output
@@ -110,10 +108,8 @@ def test_ks06_logs_merchant_creation_and_proxy_forwarding(capsys, monkeypatch):
     assert "[Merchant] G3 chuẩn hóa và ký: PASS" in output
     assert "[Proxy] G4 chuyển tiếp: PASS" in output
     assert "[Issuer] G5 T3 chống phát lại: REPLAY_DETECTED" in output
-    assert (
-        "[Mốc sự kiện UTC] Merchant tạo bản tin dùng lại nonce lúc "
-        "2026-09-24T08:00:00Z (không phải Proxy)"
-    ) in output
+    assert "[Sự kiện] Merchant tạo bản tin dùng lại nonce (không phải Proxy)" in output
+    assert "2026-09-24T" not in output
     assert "[Phán quyết] G6: REPLAY_DETECTED" in output
 
 
@@ -206,31 +202,21 @@ def test_flow_cli_verbose_flag_keeps_g_log_compact(capsys, monkeypatch):
     assert "[Issuer] G5 T5 chữ ký: PASS" in output
 
 
-def test_default_runner_prints_compact_results_and_attack_times(capsys, monkeypatch):
+def test_default_runner_prints_compact_results_and_event_notes(capsys, monkeypatch):
     monkeypatch.setattr("sys.argv", ["run_scenarios.py"])
     assert main() == 0
     output = capsys.readouterr().out
     lines = output.splitlines()
 
-    assert lines[0] == "TÓM TẮT TOÀN BỘ — thời gian hiển thị là đồng hồ mô phỏng UTC"
+    assert lines[0] == "TÓM TẮT TOÀN BỘ"
     assert sum(line.startswith("KS-") for line in lines) == 12
     assert sum(line.startswith("NGOÀI LỀ-") for line in lines) == 6
     assert "KS-01 | PASS | SIGNATURE_VALID" in lines
-    assert "KS-02 | PASS | REPLAY_DETECTED | Tấn công phát lại lúc 2026-09-24T08:00:00Z" in lines
-    assert any(
-        "Tấn công Proxy (giữ nguyên gói): giữ từ 2026-09-24T08:00:00Z; "
-        "chuyển tiếp tới Issuer lúc 2026-09-24T09:00:00Z" in line
-        for line in lines
-    )
-    assert any(
-        "ATTACK-01 ký thay MERCH-01 lúc 2026-09-24T08:00:00Z" in line
-        for line in lines
-    )
-    assert any(
-        "Merchant tạo bản tin dùng lại nonce lúc 2026-09-24T08:00:00Z "
-        "(không phải Proxy)" in line
-        for line in lines
-    )
+    assert "KS-02 | PASS | REPLAY_DETECTED | Tấn công phát lại" in lines
+    assert any("Tấn công Proxy: giữ nguyên gói rồi chuyển tiếp trễ" in line for line in lines)
+    assert any("ATTACK-01 ký thay MERCH-01" in line for line in lines)
+    assert any("Merchant tạo bản tin dùng lại nonce (không phải Proxy)" in line for line in lines)
+    assert "2026-09-24T" not in output
     assert "NGOÀI LỀ PASS 6/6" in lines
     assert lines[-1] == "OVERALL PASS"
     assert not any(line.startswith(("Trích log", "[Merchant]", "[Issuer]", "[Proxy]")) for line in lines)

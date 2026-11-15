@@ -6,7 +6,7 @@ if _ROOT not in sys.path:
     sys.path.insert(0, _ROOT)
 
 from he_thong import Proxy
-from kich_ban.common import format_simulation_time, report_result
+from kich_ban.common import report_result
 
 SO = 11
 TEN = "Bỏ trường MessageHash khỏi envelope"
@@ -18,7 +18,6 @@ TANG = "T0"
 def chay(env, *, verbose: bool = False):
     original = env.merchant.create_packet(message_id="TX-2026-0011")
     packet = Proxy.remove_envelope_field(original, "MessageHash")
-    attack_time = format_simulation_time(env)
     return report_result(
         env,
         SO,
@@ -27,7 +26,7 @@ def chay(env, *, verbose: bool = False):
         KY_VONG,
         group=NHOM,
         g4_action="tác động theo kịch bản",
-        event_note="Tấn công Proxy sửa envelope lúc %s" % attack_time,
+        event_note="Tấn công Proxy sửa envelope",
     )
 
 

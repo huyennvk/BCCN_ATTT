@@ -7,7 +7,7 @@ if _ROOT not in sys.path:
     sys.path.insert(0, _ROOT)
 
 from he_thong import Proxy
-from kich_ban.common import format_simulation_time, report_result
+from kich_ban.common import report_result
 from rsa_crypto import canonical_json_bytes, sign
 
 SO = 7
@@ -25,7 +25,6 @@ def chay(env, *, verbose: bool = False):
         canonical_json_bytes(packet["payload"]),
     ).hex()
     # Giữ CertificateID của Merchant nhưng thay chữ ký bằng chữ ký ATTACK-01.
-    attack_time = format_simulation_time(env)
     packet = Proxy.forward(packet)
     return report_result(
         env,
@@ -36,7 +35,7 @@ def chay(env, *, verbose: bool = False):
         group=NHOM,
         g3_actor="ATTACK-01",
         g3_action="ký theo kịch bản",
-        event_note="ATTACK-01 thay chữ ký lúc %s" % attack_time,
+        event_note="ATTACK-01 thay chữ ký",
     )
 
 
