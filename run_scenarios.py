@@ -227,7 +227,9 @@ def _run_scenario_quietly(module: Any, env: Any) -> tuple[bool, str, str | None]
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--ks", type=int, help="run one end-to-end scenario, 1..12")
+    parser.add_argument(
+        "--ks", type=int, help="run one group-numbered end-to-end scenario, 1..12"
+    )
     parser.add_argument(
         "--flow", action="store_true", help="run one valid flow; print only layer statuses"
     )
@@ -259,9 +261,9 @@ def main() -> int:
             parser.error("--ks must be in the range 1..12")
         env = create_environment(clock=FrozenClock(BASE_TIME))
         chosen = next(module for module in scenarios if module.SO == args.ks)
-        # KS-02 and KS-06 reuse the original KS-01 nonce; KS-09 verifies its
-        # stored signature. Seed the necessary fixture without extra output.
-        if args.ks in {2, 6, 9}:
+        # KS-02 verifies KS-01's stored signature; KS-03 and KS-05 reuse its nonce.
+        # Seed the necessary fixture without extra output.
+        if args.ks in {2, 3, 5}:
             with contextlib.redirect_stdout(io.StringIO()):
                 scenarios[0].chay(env)
         try:

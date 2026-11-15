@@ -5,31 +5,31 @@ _ROOT = str(Path(__file__).resolve().parent.parent)
 if _ROOT not in sys.path:
     sys.path.insert(0, _ROOT)
 
-from kich_ban.common import report_result
 from he_thong import Proxy
+from kich_ban.common import report_result
 
-SO = 4
-TEN = "Proxy sửa một ký tự trong CardToken"
+SO = 8
+TEN = "Bỏ trường MessageHash khỏi envelope"
 NHOM = "Toàn vẹn và cấu trúc"
-KY_VONG = "INTEGRITY_VIOLATION"
-TANG = "T4"
+KY_VONG = "MALFORMED"
+TANG = "T0"
 
 
 def chay(env, *, verbose: bool = False, detail: bool = False):
-    packet = env.merchant.create_packet(message_id="TX-2026-0004", card_token="tok_9f2e77ab")
-    tampered = Proxy.modify(packet, "CardToken", "tok_9f2e77ac")
+    original = env.merchant.create_packet(message_id="TX-2026-0011")
+    packet = Proxy.remove_envelope_field(original, "MessageHash")
     return report_result(
         env,
         SO,
         TEN,
-        tampered,
+        packet,
         KY_VONG,
         group=NHOM,
         g4_action="tác động theo kịch bản",
-        event_note="Tấn công Proxy sửa gói (sửa token thẻ)",
+        event_note="Tấn công Proxy sửa envelope",
         verbose=verbose,
         detail=detail,
-        original_packet=packet,
+        original_packet=original,
     )
 
 

@@ -5,29 +5,22 @@ _ROOT = str(Path(__file__).resolve().parent.parent)
 if _ROOT not in sys.path:
     sys.path.insert(0, _ROOT)
 
-from datetime import timedelta
-
 from he_thong import Proxy
 from kich_ban.common import report_result
+from kich_ban.ks_01_ban_tin_chuan import chay as chay_ks01
 
-SO = 6
-TEN = "Merchant dùng lại nonce KS-01 với MessageID mới"
+SO = 3
+TEN = "Gửi lại nguyên văn bản tin KS-01"
 NHOM = "Thời gian và chống phát lại"
 KY_VONG = "REPLAY_DETECTED"
 TANG = "T3"
 
 
 def chay(env, *, verbose: bool = False):
-    base = env.data.get("ks01_packet")
-    if base is None:
-        from kich_ban.ks_01_ban_tin_chuan import chay as chay_ks01
+    packet = env.data.get("ks01_packet")
+    if packet is None:
         chay_ks01(env)
-        base = env.data["ks01_packet"]
-    packet = env.merchant.create_packet(
-        message_id="TX-2026-0006",
-        timestamp=env.clock.now() - timedelta(seconds=10),
-        nonce=base["payload"]["Nonce"],
-    )
+        packet = env.data["ks01_packet"]
     packet = Proxy.forward(packet)
     return report_result(
         env,
@@ -36,7 +29,10 @@ def chay(env, *, verbose: bool = False):
         packet,
         KY_VONG,
         group=NHOM,
-        event_note="Merchant tạo bản tin dùng lại nonce (không phải Proxy)",
+        g2_action="dùng lại bản tin đã tạo",
+        g3_action="dùng lại chữ ký đã tạo",
+        g4_action="chuyển tiếp lại",
+        event_note="Tấn công phát lại",
     )
 
 

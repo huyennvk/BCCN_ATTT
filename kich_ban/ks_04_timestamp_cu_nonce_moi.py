@@ -10,7 +10,7 @@ from datetime import timedelta
 from he_thong import Proxy
 from kich_ban.common import report_result
 
-SO = 5
+SO = 4
 TEN = "Proxy giữ lại rồi chuyển trễ gói hợp lệ"
 NHOM = "Thời gian và chống phát lại"
 KY_VONG = "TIMESTAMP_TOO_OLD"
@@ -21,7 +21,7 @@ def chay(env, *, verbose: bool = False):
     original_packet = env.merchant.create_packet(message_id="TX-2026-0005")
     advance_clock = getattr(env.clock, "advance", None)
     if advance_clock is None:
-        raise RuntimeError("KS-05 requires a controllable clock to model delayed delivery")
+        raise RuntimeError("KS-04 requires a controllable clock to model delayed delivery")
 
     saved_ca_crl = env.ca._crl
     saved_issuer_crl_cache = env.issuer._crl_cache

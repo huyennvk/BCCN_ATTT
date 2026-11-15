@@ -15,6 +15,25 @@
 - `run_scenarios.py` — chạy kịch bản, kiểm tra sáu mã lỗi bổ sung, demo luồng và đo primitive mật mã.
 - `tests/` — kiểm thử RSA-PSS, schema, chống phát lại, idempotency, đồng thời và audit log.
 
+## Thứ tự kịch bản theo nhóm
+
+Mã KS được đánh liên tiếp trong từng nhóm; `--ks N` nhận các mã mới dưới đây.
+
+| Nhóm | KS | Kịch bản |
+| --- | --- | --- |
+| 1. Luồng hợp lệ và hậu kiểm | KS-01 | Ký và gửi bản tin chuẩn |
+| 1. Luồng hợp lệ và hậu kiểm | KS-02 | Hậu kiểm độc lập bản tin KS-01 đã lưu |
+| 2. Thời gian và chống phát lại | KS-03 | Gửi lại nguyên văn bản tin KS-01 |
+| 2. Thời gian và chống phát lại | KS-04 | Proxy giữ lại rồi chuyển trễ gói hợp lệ |
+| 2. Thời gian và chống phát lại | KS-05 | Merchant dùng lại nonce KS-01 với MessageID mới |
+| 3. Toàn vẹn và cấu trúc | KS-06 | Proxy sửa Amount |
+| 3. Toàn vẹn và cấu trúc | KS-07 | Proxy sửa CardToken |
+| 3. Toàn vẹn và cấu trúc | KS-08 | Bỏ trường MessageHash khỏi envelope |
+| 4. Chữ ký và chính sách khóa | KS-09 | Ký bằng khóa lạ nhưng khai báo chứng thư Merchant |
+| 4. Chữ ký và chính sách khóa | KS-10 | Chứng thư CA cấp cho khóa RSA-1024 |
+| 5. Chứng thư và quyền ký | KS-11 | Ký bản tin bằng chứng thư Merchant đã bị thu hồi |
+| 5. Chứng thư và quyền ký | KS-12 | Chứng thư hợp lệ của ATTACK-01 ký thay MERCH-01 |
+
 ## Cài đặt và chạy
 
 Yêu cầu Python 3.10 trở lên.
