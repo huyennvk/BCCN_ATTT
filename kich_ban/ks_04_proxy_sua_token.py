@@ -26,7 +26,7 @@ def chay(env, *, verbose: bool = False, detail: bool = False):
         KY_VONG,
         group=NHOM,
         g4_action="tác động theo kịch bản",
-        event_note="Tấn công Proxy sửa gói",
+        event_note="Tấn công Proxy sửa gói (sửa token thẻ)",
         verbose=verbose,
         detail=detail,
         original_packet=packet,

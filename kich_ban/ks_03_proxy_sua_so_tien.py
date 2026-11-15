@@ -26,7 +26,7 @@ def chay(env, *, verbose: bool = False, detail: bool = False):
         KY_VONG,
         group=NHOM,
         g4_action="tác động theo kịch bản",
-        event_note="Tấn công Proxy sửa gói" if not detail else "Tấn công Proxy sửa gói: sửa số tiền Amount 150000 thành 1500000",
+        event_note="Tấn công Proxy sửa gói (sửa số tiền)" if not detail else "Tấn công Proxy sửa gói: sửa số tiền Amount 150000 thành 1500000",
         original_packet=packet,
         detail=detail,
     )
