@@ -6,7 +6,7 @@ if _ROOT not in sys.path:
     sys.path.insert(0, _ROOT)
 
 from he_thong import Proxy
-from kich_ban.common import report_result
+from kich_ban.common import format_simulation_time, report_result
 from kich_ban.ks_01_ban_tin_chuan import chay as chay_ks01
 
 SO = 2
@@ -21,6 +21,7 @@ def chay(env, *, verbose: bool = False):
     if packet is None:
         chay_ks01(env)
         packet = env.data["ks01_packet"]
+    attack_time = format_simulation_time(env)
     packet = Proxy.forward(packet)
     return report_result(
         env,
@@ -32,6 +33,7 @@ def chay(env, *, verbose: bool = False):
         g2_action="dùng lại bản tin đã tạo",
         g3_action="dùng lại chữ ký đã tạo",
         g4_action="chuyển tiếp lại",
+        event_note="Tấn công phát lại lúc %s" % attack_time,
     )
 
 

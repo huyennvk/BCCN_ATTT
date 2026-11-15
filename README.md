@@ -35,7 +35,7 @@ python run_scenarios.py --flow
 python run_scenarios.py --bench
 ```
 
-Mọi chế độ chạy kịch bản (`mặc định`, `--ks`, `--flow`, và cả `--verbose`) in các mốc G2–G4 của Merchant/Proxy, các tầng T bên trong G5 của Issuer, quyết định G6 và đối chiếu G8. Đầu ra chỉ gồm trạng thái PASS/lỗi, không in payload, trường dữ liệu, giá trị/hash/chữ ký hay dữ liệu trung gian. `--verbose` được giữ để tương thích nhưng không bật thêm chi tiết. Payload trong nguyên mẫu không được mã hóa; chữ ký không che nội dung.
+Chạy mặc định chỉ in bảng tóm tắt 12 kịch bản KS và sáu kiểm tra mã lỗi bổ sung; các dòng tấn công ghi thời điểm theo đồng hồ mô phỏng UTC (KS-05 ghi cả lúc giữ và lúc chuyển tiếp gói). Dùng `--ks N` để xem log G2–G4 và các tầng T trong G5 của riêng một kịch bản; `--flow` hiển thị log tương tự cho luồng hợp lệ. `--verbose` được giữ để tương thích, không làm lộ payload hay dữ liệu trung gian. Các log chi tiết chỉ in nhãn bước và trạng thái PASS/lỗi. Payload trong nguyên mẫu không được mã hóa; chữ ký không che nội dung.
 
 Chạy kiểm thử tự động:
 
