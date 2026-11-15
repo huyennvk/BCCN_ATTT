@@ -8,7 +8,7 @@ if _ROOT not in sys.path:
 from datetime import timedelta
 
 from he_thong import Proxy
-from kich_ban.common import format_simulation_time, report_result
+from kich_ban.common import report_result
 
 SO = 6
 TEN = "Merchant dùng lại nonce KS-01 với MessageID mới"
@@ -23,7 +23,6 @@ def chay(env, *, verbose: bool = False):
         from kich_ban.ks_01_ban_tin_chuan import chay as chay_ks01
         chay_ks01(env)
         base = env.data["ks01_packet"]
-    creation_time = format_simulation_time(env)
     packet = env.merchant.create_packet(
         message_id="TX-2026-0006",
         timestamp=env.clock.now() - timedelta(seconds=10),
@@ -37,10 +36,7 @@ def chay(env, *, verbose: bool = False):
         packet,
         KY_VONG,
         group=NHOM,
-        event_note=(
-            "Merchant tạo bản tin dùng lại nonce lúc %s (không phải Proxy)"
-            % creation_time
-        ),
+        event_note="Merchant tạo bản tin dùng lại nonce (không phải Proxy)",
     )
 
 

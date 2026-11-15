@@ -8,7 +8,7 @@ if _ROOT not in sys.path:
 from datetime import timedelta
 
 from he_thong import Proxy
-from kich_ban.common import format_simulation_time, report_result
+from kich_ban.common import report_result
 
 SO = 5
 TEN = "Proxy giữ lại rồi chuyển trễ gói hợp lệ"
@@ -25,9 +25,7 @@ def chay(env, *, verbose: bool = False):
 
     saved_ca_crl = env.ca._crl
     saved_issuer_crl_cache = env.issuer._crl_cache
-    hold_started_at = format_simulation_time(env)
     advance_clock(timedelta(hours=1))
-    forwarded_at = format_simulation_time(env)
     try:
         packet = Proxy.forward(original_packet)
         return report_result(
@@ -38,10 +36,7 @@ def chay(env, *, verbose: bool = False):
             KY_VONG,
             group=NHOM,
             g4_action="chuyển tiếp theo kịch bản",
-            event_note=(
-                "Tấn công Proxy (giữ nguyên gói): giữ từ %s; chuyển tiếp tới Issuer lúc %s"
-                % (hold_started_at, forwarded_at)
-            ),
+            event_note="Tấn công Proxy: giữ nguyên gói rồi chuyển tiếp trễ",
         )
     finally:
         # Roll back this isolated time jump because the full scenario suite

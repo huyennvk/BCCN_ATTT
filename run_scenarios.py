@@ -211,7 +211,7 @@ def _run_scenario_quietly(module: Any, env: Any) -> tuple[bool, str, str | None]
         success = bool(module.chay(env))
 
     decision_prefix = "[Phán quyết] G6: "
-    event_prefix = "[Mốc sự kiện UTC] "
+    event_prefix = "[Sự kiện] "
     decision = next(
         (line[len(decision_prefix):] for line in captured.getvalue().splitlines()
          if line.startswith(decision_prefix)),
@@ -262,7 +262,7 @@ def main() -> int:
         return 0 if chosen.chay(env) else 1
 
     env = create_environment(clock=FrozenClock(BASE_TIME))
-    print("TÓM TẮT TOÀN BỘ — thời gian hiển thị là đồng hồ mô phỏng UTC")
+    print("TÓM TẮT TOÀN BỘ")
     print("KỊCH BẢN KS")
     scenario_results: list[bool] = []
     for module in scenarios:

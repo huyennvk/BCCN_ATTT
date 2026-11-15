@@ -8,7 +8,7 @@ if _ROOT not in sys.path:
 from datetime import timedelta
 
 from he_thong import Proxy
-from kich_ban.common import format_simulation_time, report_result
+from kich_ban.common import report_result
 
 SO = 8
 TEN = "Ký bản tin bằng chứng thư Merchant đã bị thu hồi"
@@ -21,7 +21,6 @@ def chay(env, *, verbose: bool = False):
     now = env.clock.now()
     env.ca.revoke(env.merchant.certificate_id, when=now - timedelta(seconds=5))
     packet = env.merchant.create_packet(message_id="TX-2026-0008", timestamp=now)
-    attempt_time = format_simulation_time(env)
     packet = Proxy.forward(packet)
     try:
         return report_result(
@@ -31,7 +30,7 @@ def chay(env, *, verbose: bool = False):
             packet,
             KY_VONG,
             group=NHOM,
-            event_note="Thử gửi bằng chứng thư đã thu hồi lúc %s" % attempt_time,
+            event_note="Thử gửi bằng chứng thư đã thu hồi",
         )
     finally:
         # Kịch bản độc lập: phục hồi trạng thái CA để không làm nhiễm KS-09.

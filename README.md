@@ -35,7 +35,7 @@ python run_scenarios.py --flow
 python run_scenarios.py --bench
 ```
 
-Chạy mặc định chỉ in bảng tóm tắt 12 kịch bản KS và sáu kiểm tra mã lỗi bổ sung; các dòng tấn công ghi thời điểm theo đồng hồ mô phỏng UTC (KS-05 ghi cả lúc giữ và lúc chuyển tiếp gói). Dùng `--ks N` để xem log G2–G4 và các tầng T trong G5 của riêng một kịch bản; `--flow` hiển thị log tương tự cho luồng hợp lệ. `--verbose` được giữ để tương thích, không làm lộ payload hay dữ liệu trung gian. Các log chi tiết chỉ in nhãn bước và trạng thái PASS/lỗi. Payload trong nguyên mẫu không được mã hóa; chữ ký không che nội dung.
+Chạy mặc định chỉ in bảng tóm tắt 12 kịch bản KS và sáu kiểm tra mã lỗi bổ sung; các dòng sự kiện nêu hành vi và tác nhân, không in thời gian. Dùng `--ks N` để xem log G2–G4 và các tầng T trong G5 của riêng một kịch bản; `--flow` hiển thị log tương tự cho luồng hợp lệ. `--verbose` được giữ để tương thích, không làm lộ payload hay dữ liệu trung gian. Các log chi tiết chỉ in nhãn bước và trạng thái PASS/lỗi. Payload trong nguyên mẫu không được mã hóa; chữ ký không che nội dung.
 
 Chạy kiểm thử tự động:
 
