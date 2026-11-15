@@ -233,6 +233,11 @@ def main() -> int:
     )
     parser.add_argument("--bench", action="store_true", help="benchmark RSA primitives")
     parser.add_argument(
+        "--detail",
+        action="store_true",
+        help="hiển thị chi tiết gói tin, payload trước/sau khi bị sửa và đối chiếu băm T4",
+    )
+    parser.add_argument(
         "--verbose", action="store_true",
         help="kept for compatibility; does not expand the full-run summary or expose packet data",
     )
@@ -259,7 +264,10 @@ def main() -> int:
         if args.ks in {2, 6, 9}:
             with contextlib.redirect_stdout(io.StringIO()):
                 scenarios[0].chay(env)
-        return 0 if chosen.chay(env) else 1
+        try:
+            return 0 if chosen.chay(env, detail=args.detail) else 1
+        except TypeError:
+            return 0 if chosen.chay(env) else 1
 
     env = create_environment(clock=FrozenClock(BASE_TIME))
     print("TÓM TẮT TOÀN BỘ")
