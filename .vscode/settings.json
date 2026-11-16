@@ -1,10 +1,15 @@
 {
     "editor.emptySelectionClipboard": false,
     "terminal.integrated.env.windows": {
-        "PYTHONPATH": "${workspaceFolder}"
+        "PYTHONPATH": "${workspaceFolder}",
+        "PYTHONDONTWRITEBYTECODE": "1"
     },
     "python.analysis.extraPaths": [
         "${workspaceFolder}"
     ],
-    "python.envFile": "${workspaceFolder}/.env"
+    "python.envFile": "${workspaceFolder}/.env",
+    "files.exclude": {
+        "**/__pycache__": true,
+        "**/*.pyc": true
+    }
 }
