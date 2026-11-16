@@ -12,7 +12,8 @@
 - `audit_log.py` — nhật ký JSONL dạng chuỗi băm; phát hiện sửa bản ghi nhưng **không** chống được quản trị viên có thể viết lại toàn bộ file.
 - `he_thong.py` — Merchant, Proxy, Issuer và pipeline xác minh T0–T5; `Issuer.verify_packet` nhận raw JSON để áp dụng parser nghiêm ngặt ngay tại ranh giới tiếp nhận (dict chỉ dành cho thử nghiệm nội bộ).
 - `kich_ban/ks_01_…ks_12_*.py` — 12 kịch bản đầu-cuối của báo cáo.
-- `run_scenarios.py` — chạy kịch bản, kiểm tra sáu mã lỗi bổ sung, demo luồng và đo primitive mật mã.
+- `run_scenarios.py` — chạy kịch bản, kiểm tra sáu mã lỗi bổ sung, demo luồng và chế độ benchmark tích hợp.
+- `benchmark_crypto.py` — benchmark hiệu năng độc lập cho RSA-PSS, SHA-256, canonicalization và sinh khóa.
 - `tests/` — kiểm thử RSA-PSS, schema, chống phát lại, idempotency, đồng thời và audit log.
 
 ## Thứ tự kịch bản theo nhóm
@@ -44,7 +45,7 @@ source .venv/bin/activate       # Windows: .venv\Scripts\activate
 python -m pip install -r requirements.txt -r requirements-dev.txt
 ```
 
-Chạy luồng hợp lệ, toàn bộ 12 kịch bản và sáu kiểm tra đơn vị bổ sung; chạy riêng một kịch bản hoặc benchmark RSA:
+Chạy luồng hợp lệ, toàn bộ 12 kịch bản và sáu kiểm tra đơn vị bổ sung; chạy riêng một kịch bản hoặc benchmark tích hợp:
 
 ```bash
 python run_scenarios.py
@@ -54,6 +55,16 @@ python run_scenarios.py --flow
 python run_scenarios.py --bench
 ```
 
+Benchmark độc lập dùng cho mục 3.3, chạy tại thư mục gốc của repository sau khi cài dependencies:
+
+```bash
+python benchmark_crypto.py
+# Tùy chọn: thay số mẫu, warm-up hoặc chỉ đo một cỡ khóa
+python benchmark_crypto.py --iterations 300 --warmup 30 --sizes 2048 3072
+```
+
+Mặc định script đo 300 mẫu cho ký, xác minh, chuẩn hóa JSON và băm SHA-256 (băm được lấy mẫu theo lô để giảm overhead của bộ định thời), cùng 10 lần sinh khóa cho mỗi cỡ RSA; có thể đổi các số này bằng tham số dòng lệnh. Script in phiên bản Python, `cryptography`, OpenSSL, hệ điều hành, CPU và thông tin payload. Nó nhập các primitive từ `rsa_crypto.py`, không phụ thuộc chế độ chạy kịch bản của `run_scenarios.py`.
+
 Chạy mặc định chỉ in bảng tóm tắt 12 kịch bản KS và sáu kiểm tra mã lỗi bổ sung; các dòng sự kiện nêu hành vi và tác nhân, không in thời gian. Dùng `--ks N` để xem log G2–G4 và các tầng T trong G5 của riêng một kịch bản; `--flow` hiển thị log tương tự cho luồng hợp lệ. `--verbose` được giữ để tương thích, không làm lộ payload hay dữ liệu trung gian. Các log chi tiết chỉ in nhãn bước và trạng thái PASS/lỗi. Payload trong nguyên mẫu không được mã hóa; chữ ký không che nội dung.
 
 Chạy kiểm thử tự động:
@@ -62,7 +73,7 @@ Chạy kiểm thử tự động:
 pytest -q
 ```
 
-`--bench` đo các phép toán tuần tự trên một payload nhỏ; số lần/giây in ra là nghịch đảo latency trung bình, **không phải throughput production đo dưới tải**.
+`run_scenarios.py --bench` là chế độ cũ, đo ký, xác minh, canonicalization+encoding và sinh khóa; nó không đo riêng SHA-256. `benchmark_crypto.py` tách phép băm này ra để có thể đối chiếu trực tiếp. Cả hai đều là microbenchmark tuần tự; số lần/giây hiển thị chỉ là nghịch đảo latency trung bình, **không phải throughput production đo dưới tải**.
 
 ## Các quyết định bảo mật trong bản dựng
 
